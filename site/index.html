@@ -1,43 +1,231 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#101216">
-    <title>Static Catalog Starter for Stremio</title>
-    <style>
-      :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
-      * { box-sizing: border-box; }
-      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #101216; color: #f5f5f2; }
-      main { width: min(680px, calc(100% - 40px)); padding: 36px; border: 1px solid #30343d; border-radius: 18px; background: #191c22; }
-      .eyebrow { color: #86d9c0; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
-      h1 { margin: 12px 0; font-size: clamp(30px, 7vw, 48px); line-height: 1.04; }
-      p { color: #b4bac5; line-height: 1.65; }
-      code { overflow-wrap: anywhere; color: #d6e7e1; }
-      .button { display: inline-block; margin-top: 12px; padding: 12px 16px; border-radius: 10px; background: #86d9c0; color: #101216; font-weight: 750; text-decoration: none; }
-      .note { margin-top: 26px; padding-top: 18px; border-top: 1px solid #30343d; font-size: 13px; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <div class="eyebrow">Stremio · static add-on</div>
-      <h1 id="addon-name">Static Catalog Starter</h1>
-      <p id="addon-description">A small, static catalog add-on hosted on GitHub Pages.</p>
-      <p>Manifest URL: <code id="manifest-url"></code></p>
-      <a class="button" id="install-link" href="#">Install in Stremio</a>
-      <p class="note">If Stremio does not open, copy the manifest URL into its add-on search field. This starter serves fixed JSON catalogs and explicit media URLs. It does not scrape sites or resolve third-party players.</p>
-    </main>
-    <script>
-      const manifestUrl = new URL('manifest.json', window.location.href).href;
-      document.querySelector('#manifest-url').textContent = manifestUrl;
-      document.querySelector('#install-link').href = `stremio://${manifestUrl.replace(/^https?:\/\//, '')}`;
-      fetch(new URL('manifest.json', window.location.href))
-        .then(response => response.ok ? response.json() : Promise.reject())
-        .then(manifest => {
-          document.querySelector('#addon-name').textContent = manifest.name;
-          document.querySelector('#addon-description').textContent = manifest.description;
-        })
-        .catch(() => {});
-    </script>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#111613">
+  <title>My Memories · Stremio catalog</title>
+  <style>
+    :root{color-scheme:dark;--bg:#111613;--panel:#191f1b;--panel2:#202823;--line:#344138;--text:#f3f3e9;--muted:#a3aea4;--mint:#a3e3bd;--mint2:#69ba8a;--gold:#e8c77d;--danger:#ff8a7a;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 82% 2%,#20352b 0,transparent 30rem),var(--bg);color:var(--text);min-height:100vh}
+    .wrap{width:min(1040px,calc(100% - 36px));margin:0 auto;padding:46px 0 72px}.brand{display:flex;align-items:center;gap:12px;color:var(--mint);font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}.mark{width:34px;height:34px;border:1px solid #466453;border-radius:50%;display:grid;place-items:center;background:#1a2a20;font-size:16px}
+    h1{font-family:Georgia,"Times New Roman",serif;font-weight:500;font-size:clamp(38px,6vw,64px);letter-spacing:-.045em;line-height:1;margin:24px 0 14px}.lede{color:var(--muted);max-width:680px;font-size:16px;line-height:1.65;margin:0}.steps{display:flex;gap:10px;flex-wrap:wrap;margin:26px 0 30px}.step{padding:8px 11px;border:1px solid var(--line);border-radius:999px;color:#c4cec4;font-size:12px}.step b{color:var(--mint);margin-right:6px}
+    .sources{display:grid;gap:16px}.source{border:1px solid var(--line);background:linear-gradient(145deg,#1b221d,#171d19);border-radius:16px;padding:20px}.source-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}.source-head h2{margin:0;font-size:18px;font-weight:650}.source-head .index{color:var(--mint);font-size:11px;letter-spacing:.12em;text-transform:uppercase}.source-head button{border:0;background:transparent;color:#e7a39b;padding:7px 0;cursor:pointer;font:inherit;font-size:13px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.field{display:grid;gap:7px;min-width:0}.field.wide{grid-column:1/-1}label,.label{font-size:12px;font-weight:650;color:#d8e0d8}.hint{font-size:11px;color:#88948b;line-height:1.4}input,select{width:100%;min-width:0;border:1px solid #3b4840;border-radius:9px;background:#111713;color:var(--text);padding:11px 12px;font:inherit;font-size:13px;outline:none}input:focus,select:focus{border-color:var(--mint2);box-shadow:0 0 0 3px #69ba8a20}input::placeholder{color:#6f7b72}.selectors{margin-top:18px;padding-top:17px;border-top:1px solid #2d3830}.selectors h3{font-size:13px;margin:0 0 13px;color:#dfe8df}.check{display:flex;align-items:flex-start;gap:9px;margin-top:14px;color:#c2cdc3;font-size:13px;line-height:1.45}.check input{width:16px;min-width:16px;margin:1px 0 0;accent-color:var(--mint2)}.meta-fields{display:grid;gap:8px}.meta-row{display:grid;grid-template-columns:1fr 2fr 1fr auto;gap:8px;align-items:center}.meta-row button{background:#2b211f;color:#ffb3a9;border:1px solid #51332e;border-radius:8px;padding:8px 10px;cursor:pointer}.preview{display:none;margin-top:14px;border:1px solid #405849;background:#142019;border-radius:11px;padding:13px;color:#d8e9dc;font-size:12px;line-height:1.55;overflow-wrap:anywhere}.preview.show{display:block}.preview .ok{color:var(--mint);font-weight:700}.preview .error{color:#ff9d8f}.preview img{max-width:72px;max-height:90px;object-fit:cover;border-radius:5px;vertical-align:middle;margin:6px 10px 0 0}.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:17px 0 0}.button{border:1px solid transparent;border-radius:10px;padding:11px 15px;font:inherit;font-size:13px;font-weight:750;cursor:pointer;transition:transform .12s,background .12s}.button:hover{transform:translateY(-1px)}.primary{background:var(--mint);color:#102017}.secondary{background:#202a23;border-color:#3c4c41;color:#e4ede5}.small{padding:8px 11px;font-size:12px}.summary{margin-top:25px;border:1px solid #536b58;background:linear-gradient(140deg,#1a2a20,#18231b);border-radius:16px;padding:20px;display:none}.summary.show{display:block}.summary h2{font-size:20px;margin:0 0 6px}.summary p{font-size:13px;color:#b7c4b8;line-height:1.55;margin:8px 0 14px}.summary .url{overflow-wrap:anywhere;border-radius:8px;background:#101711;border:1px solid #34483a;padding:10px 12px;color:#d9e8db;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;margin:8px 0}.summary .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.notice{margin-top:23px;padding:14px 16px;border-left:3px solid var(--gold);background:#211e16;border-radius:0 9px 9px 0;color:#d2c9ac;font-size:12px;line-height:1.6}.footer{margin-top:34px;color:#829087;font-size:11px;line-height:1.65}.footer a{color:#b8d5bf}
+    @media(max-width:640px){.wrap{padding-top:28px}.grid{grid-template-columns:1fr}.field.wide{grid-column:auto}.source{padding:16px}.meta-row{grid-template-columns:1fr 1fr}.meta-row input:nth-child(2){grid-column:1/-1}.meta-row button{justify-self:start}.steps{gap:7px}.step{font-size:11px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="brand"><span class="mark" aria-hidden="true">✳</span><span>Stremio · personal catalog</span></div>
+    <h1>Keep your memories<br>close at hand.</h1>
+    <p class="lede">Connect pages from your own site and turn their videos into Stremio catalogs. Make one catalog for Holidays, another for Parties, and add more whenever you need.</p>
+    <div class="steps" aria-label="Setup steps"><span class="step"><b>01</b> Add a page</span><span class="step"><b>02</b> Map its fields</span><span class="step"><b>03</b> Install in Stremio</span></div>
+
+    <form id="setup-form">
+      <div id="sources" class="sources"></div>
+      <div class="controls">
+        <button type="button" class="button secondary" id="add-source">＋ Add another page</button>
+        <button type="submit" class="button primary">Create Stremio install link</button>
+      </div>
+      <div id="form-error" class="preview show" role="alert" style="display:none"></div>
+    </form>
+
+    <section id="install-summary" class="summary" aria-live="polite">
+      <h2>Your catalog is ready</h2>
+      <p>Install this configuration in Stremio. Keep this link private if your pages or videos are not public.</p>
+      <div id="manifest-url" class="url"></div>
+      <div class="actions">
+        <a id="install-button" class="button primary" href="#">Install in Stremio</a>
+        <button id="copy-button" class="button secondary" type="button">Copy manifest URL</button>
+        <a id="edit-button" class="button secondary" href="#">Edit this setup</a>
+      </div>
+    </section>
+
+    <aside class="notice"><strong>Page updates are automatic:</strong> when Stremio refreshes a configured catalog, the add-on reads the current page. Adding a new category changes the setup link, so install the newly generated link in Stremio. Pages must be publicly reachable, and the video selector must find a direct playable video URL. This setup tool does not store your configuration on a server; the install URL contains it.</aside>
+    <p class="footer">Use CSS selectors such as <code>.video-card</code>, <code>.title</code>, <code>img</code>, or <code>video source</code>. The preview checks what the add-on can read from the page. This add-on returns the media URLs you configure; it does not copy your videos.</p>
+  </main>
+
+  <template id="source-template">
+    <section class="source">
+      <div class="source-head"><div><div class="index">Source</div><h2>Video page</h2></div><button type="button" data-action="remove">Remove page</button></div>
+      <div class="grid">
+        <div class="field"><label>Catalog name</label><input data-field="name" required maxlength="48" placeholder="Holidays"></div>
+        <div class="field"><label>Page URL</label><input data-field="pageUrl" type="url" required placeholder="https://your-site.example/holidays/" autocomplete="url"></div>
+      </div>
+      <div class="selectors">
+        <h3>Find each video and its Stremio details</h3>
+        <div class="grid">
+          <div class="field"><label>Repeated video item</label><input data-field="itemSelector" required placeholder=".video-card"></div>
+          <div class="field"><label>Title</label><input data-field="titleSelector" required placeholder=".video-title"></div>
+          <div class="field"><label>Title value</label><input data-field="titleAttribute" value="text" placeholder="text"></div>
+          <div class="field"><label>Description selector</label><input data-field="descriptionSelector" placeholder=".description"></div>
+          <div class="field"><label>Description value</label><input data-field="descriptionAttribute" value="text" placeholder="text"></div>
+          <div class="field"><label>Poster selector</label><input data-field="posterSelector" placeholder="img"></div>
+          <div class="field"><label>Poster attribute</label><input data-field="posterAttribute" value="src" placeholder="src or data-src"></div>
+          <div class="field"><label>Detail page link selector</label><input data-field="detailLinkSelector" placeholder="a.watch"></div>
+          <div class="field"><label>Link attribute</label><input data-field="detailLinkAttribute" value="href" placeholder="href"></div>
+          <div class="field"><label>Video URL selector</label><input data-field="streamSelector" required placeholder="video source"></div>
+          <div class="field"><label>Video URL attribute</label><input data-field="streamAttribute" value="src" placeholder="src or href"></div>
+          <div class="field wide"><label class="check"><input data-field="streamFromDetail" type="checkbox" checked><span>The video URL is on each detail page (follow the detail link and read the video selector there). Leave unchecked if the video URL is already inside each item on this page.</span></label></div>
+        </div>
+        <div class="field" style="margin-top:17px">
+          <div class="label">Additional Stremio metadata</div>
+          <div class="meta-fields" data-meta-fields></div>
+          <div class="controls"><button type="button" class="button secondary small" data-action="add-meta">＋ Add metadata field</button><button type="button" class="button secondary small" data-action="test">Test this page</button></div>
+          <div class="preview" data-preview aria-live="polite"></div>
+          <div class="hint">Optional fields include releaseInfo, runtime, genres, cast, director, language, country, awards, website, background, logo and certification.</div>
+        </div>
+      </div>
+    </section>
+  </template>
+
+  <script>
+    const META_KEYS = ['releaseInfo','runtime','genres','cast','director','language','country','awards','website','background','logo','certification','imdbRating'];
+    const fields = ['name','pageUrl','itemSelector','titleSelector','titleAttribute','descriptionSelector','descriptionAttribute','posterSelector','posterAttribute','detailLinkSelector','detailLinkAttribute','streamSelector','streamAttribute','streamFromDetail'];
+    const sourcesEl = document.getElementById('sources');
+    const sourceTemplate = document.getElementById('source-template');
+    const summary = document.getElementById('install-summary');
+    const formError = document.getElementById('form-error');
+    let sourceCounter = 0;
+
+    function slug(text, fallback) {
+      const value = (text || '').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 32);
+      return value || fallback;
+    }
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function addMetaRow(container, field = {}) {
+      const row = document.createElement('div');
+      row.className = 'meta-row';
+      const select = document.createElement('select');
+      select.dataset.metaKey = '';
+      for (const key of META_KEYS) {
+        const option = document.createElement('option'); option.value = key; option.textContent = key; select.append(option);
+      }
+      if (field.key) select.value = field.key;
+      const selector = document.createElement('input'); selector.dataset.metaSelector = ''; selector.placeholder = '.year or time'; selector.value = field.selector || '';
+      const attribute = document.createElement('input'); attribute.dataset.metaAttribute = ''; attribute.placeholder = 'text'; attribute.value = field.attribute || 'text';
+      const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove'; remove.setAttribute('aria-label','Remove metadata field');
+      remove.addEventListener('click', () => row.remove());
+      row.append(select, selector, attribute, remove); container.append(row);
+    }
+    function addSource(source = {}) {
+      if (sourcesEl.children.length >= 12) { showError('You can configure up to 12 pages.'); return; }
+      sourceCounter += 1;
+      const fragment = sourceTemplate.content.cloneNode(true);
+      const card = fragment.querySelector('.source');
+      for (const key of fields) {
+        const input = card.querySelector(`[data-field="${key}"]`);
+        if (!input) continue;
+        if (key === 'streamFromDetail') input.checked = source[key] !== false;
+        else if (source[key] !== undefined && source[key] !== '') input.value = source[key];
+      }
+      const heading = card.querySelector('.source-head h2');
+      card.querySelector('[data-field="name"]').addEventListener('input', event => { heading.textContent = event.target.value || 'Video page'; });
+      heading.textContent = source.name || 'Video page';
+      card.querySelector('[data-action="remove"]').addEventListener('click', () => { card.remove(); updateSourceNumbers(); });
+      card.querySelector('[data-action="add-meta"]').addEventListener('click', () => addMetaRow(card.querySelector('[data-meta-fields]')));
+      card.querySelector('[data-action="test"]').addEventListener('click', () => testSource(card));
+      for (const meta of source.metaFields || []) addMetaRow(card.querySelector('[data-meta-fields]'), meta);
+      sourcesEl.append(fragment); updateSourceNumbers();
+    }
+    function updateSourceNumbers() {
+      [...sourcesEl.querySelectorAll('.source')].forEach((card, index) => { card.querySelector('.index').textContent = `Source ${String(index + 1).padStart(2,'0')}`; });
+    }
+    function showError(message) {
+      formError.textContent = message; formError.style.display = 'block'; formError.classList.add('show');
+      summary.classList.remove('show');
+    }
+    function clearError() { formError.textContent = ''; formError.style.display = 'none'; formError.classList.remove('show'); }
+    function collectSource(card, index) {
+      const source = {};
+      for (const key of fields) {
+        const input = card.querySelector(`[data-field="${key}"]`);
+        source[key] = key === 'streamFromDetail' ? input.checked : input.value.trim();
+      }
+      source.id = slug(source.name, `source-${index + 1}`);
+      source.metaFields = [...card.querySelectorAll('.meta-row')].map(row => ({
+        key: row.querySelector('[data-meta-key]').value,
+        selector: row.querySelector('[data-meta-selector]').value.trim(),
+        attribute: row.querySelector('[data-meta-attribute]').value.trim() || 'text'
+      })).filter(field => field.selector);
+      return source;
+    }
+    function collectConfig() {
+      const sources = [...sourcesEl.querySelectorAll('.source')].map(collectSource);
+      const used = new Set();
+      for (const source of sources) {
+        const original = source.id; let suffix = 2;
+        while (used.has(source.id)) source.id = `${original}-${suffix++}`;
+        used.add(source.id);
+      }
+      return { version: 1, sources };
+    }
+    function encodeToken(value) {
+      const bytes = new TextEncoder().encode(JSON.stringify(value));
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/g,'');
+    }
+    async function testSource(card) {
+      const preview = card.querySelector('[data-preview]');
+      preview.classList.add('show'); preview.innerHTML = 'Checking page and selectors…';
+      try {
+        const response = await fetch('/api/preview', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({source:collectSource(card, [...sourcesEl.children].indexOf(card))}) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not read that page.');
+        const sample = data.sample.map(item => `<div><strong>${escapeHtml(item.name)}</strong>${item.description ? `<br>${escapeHtml(item.description)}`:''}${item.poster ? `<br><img src="${escapeHtml(item.poster)}" alt="">`:''}<br><span class="hint">${escapeHtml(item.videoUrl || 'No video URL found')}</span></div>`).join('<hr style="border:0;border-top:1px solid #31483a;margin:10px 0">');
+        preview.innerHTML = `<span class="ok">Found ${data.matches} video item${data.matches === 1 ? '' : 's'}.</span>${sample || '<p>No matching videos yet. Check the item and title selectors.</p>'}`;
+      } catch (error) { preview.innerHTML = `<span class="error">${escapeHtml(error.message)}</span>`; }
+    }
+    function restoreSource(source, index) {
+      addSource({ ...source, id: source.id || `source-${index + 1}` });
+    }
+    async function restoreConfig() {
+      const parts = location.pathname.split('/').filter(Boolean);
+      if (parts.length >= 2 && parts[1] === 'configure') {
+        try {
+          const response = await fetch(`/${encodeURIComponent(parts[0])}/config.json`);
+          const config = await response.json();
+          if (response.ok && Array.isArray(config.sources)) {
+            sourcesEl.replaceChildren(); config.sources.forEach(restoreSource); return;
+          }
+        } catch {}
+      }
+      try {
+        const saved = JSON.parse(localStorage.getItem('stremio-memory-config') || 'null');
+        if (saved && Array.isArray(saved.sources)) { sourcesEl.replaceChildren(); saved.sources.forEach(restoreSource); return; }
+      } catch {}
+      addSource({ name:'Holidays', id:'holidays' });
+    }
+
+    document.getElementById('add-source').addEventListener('click', () => addSource({ name:`Collection ${sourcesEl.children.length + 1}` }));
+    document.getElementById('setup-form').addEventListener('submit', event => {
+      event.preventDefault(); clearError();
+      try {
+        if (!sourcesEl.children.length) throw new Error('Add at least one page.');
+        const config = collectConfig();
+        for (const [index, source] of config.sources.entries()) {
+          if (!source.name || !source.pageUrl || !source.itemSelector || !source.titleSelector || !source.streamSelector) throw new Error(`Complete the required fields in source ${index + 1}.`);
+          if (source.streamFromDetail && !source.detailLinkSelector) throw new Error(`Add a detail link selector in source ${index + 1}, or uncheck the detail-page option.`);
+        }
+        const token = encodeToken(config);
+        if (token.length > 12000) throw new Error('This setup is too large for an install URL. Reduce the number of fields or pages.');
+        const manifestUrl = `${location.origin}/${token}/manifest.json`;
+        const stremioUrl = `stremio://${manifestUrl.replace(/^https?:\/\//,'')}`;
+        document.getElementById('manifest-url').textContent = manifestUrl;
+        document.getElementById('install-button').href = stremioUrl;
+        document.getElementById('edit-button').href = `/${token}/configure`;
+        summary.classList.add('show'); summary.scrollIntoView({behavior:'smooth',block:'center'});
+        localStorage.setItem('stremio-memory-config', JSON.stringify(config));
+      } catch (error) { showError(error.message); }
+    });
+    document.getElementById('copy-button').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(document.getElementById('manifest-url').textContent); document.getElementById('copy-button').textContent='Copied'; setTimeout(() => document.getElementById('copy-button').textContent='Copy manifest URL',1500); }
+      catch { showError('Clipboard access was blocked. Select and copy the manifest URL above.'); }
+    });
+    restoreConfig();
+  </script>
+</body>
 </html>
