@@ -1,10 +1,17 @@
 {
-  "name": "stremio-static-addon-starter",
+  "name": "stremio-memory-catalog",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "node scripts/build.mjs",
-    "check": "node scripts/build.mjs --check"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "node --check worker/index.js && node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
   }
 }
