@@ -300,6 +300,9 @@ export default {
     if (url.pathname === '/config.js') {
       return serveAsset(env, request, '/config.js');
     }
+    if (url.pathname === '/config-template.json') {
+      return serveAsset(env, request, '/config-template.json');
+    }
     if (url.pathname === '/api/preview' && method === 'POST') {
       try {
         const rawBody = await request.text();

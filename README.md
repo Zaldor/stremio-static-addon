@@ -6,7 +6,7 @@ Each configured page becomes a catalog, such as **Holidays** or **Parties**. Cat
 
 ## Import and export setup JSON
 
-The setup page can import a configuration by pasting JSON or choosing a `.json` file. It can also export the current setup to the text box or download it as `stremio-memory-config.json`. The version 1 JSON includes every configured page, selector, HTML attribute, detail-page stream option, and additional Stremio metadata field. Loading a file replaces the pages currently shown in the form; after loading, create a new Stremio install link to use that configuration.
+The setup page can import a configuration by pasting JSON or choosing a `.json` file. Download the starter `stremio-memory-config-template.json` from the JSON section, then replace its example URLs and CSS selectors with those from your site. It can also export the current setup to the text box or download it as `stremio-memory-config.json`. The version 1 JSON includes every configured page, selector, HTML attribute, detail-page stream option, and additional Stremio metadata field. Loading a file replaces the pages currently shown in the form; after loading, create a new Stremio install link to use that configuration.
 
 Imported pages must use public HTTPS URLs and the configuration supports up to 12 pages and all 13 additional Stremio metadata fields per page. The JSON file contains source URLs and selectors, so keep it private if that information should not be shared.
 
@@ -34,8 +34,8 @@ Open `http://localhost:8787/` to configure sources. Use **Test this page** befor
 
 1. Create a Cloudflare API token with **Workers Admin** permission for the first deployment (the workflow creates the Worker), plus **Account Settings Read** if Wrangler requests it. Add it to this GitHub repository as `CLOUDFLARE_API_TOKEN`. After the Worker exists, the token can be narrowed to **Workers Editor** for future deploys.
 2. Add the Cloudflare account ID as repository secret `CLOUDFLARE_ACCOUNT_ID`.
-3. Push to `main`. `.github/workflows/cloudflare-worker.yml` installs dependencies, runs checks, and deploys the Worker with Wrangler.
-4. The workflow output gives the `workers.dev` address. Open its homepage, configure your pages, then install the generated manifest URL.
+3. Push to `main`. `.github/workflows/cloudflare-worker.yml` installs dependencies, runs checks, and deploys the Worker with Wrangler. The Wrangler configuration attaches the custom domain `https://stremio.juzemaru.com`.
+4. Open the custom domain, configure your pages, then install the generated manifest URL. Cloudflare creates the Worker custom-domain DNS and certificate during an authenticated deployment; the hostname must be available for the Worker.
 
 The Worker and configurator are served together. GitHub Pages is no longer used for the running add-on because it cannot fetch and parse your site pages at request time.
 

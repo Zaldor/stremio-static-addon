@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": "holidays",
+      "name": "Holidays",
+      "pageUrl": "https://your-site.example/holidays/",
+      "itemSelector": ".video-card",
+      "titleSelector": ".title",
+      "titleAttribute": "text",
+      "descriptionSelector": ".description",
+      "descriptionAttribute": "text",
+      "posterSelector": ".poster img",
+      "posterAttribute": "src",
+      "detailLinkSelector": "a.watch",
+      "detailLinkAttribute": "href",
+      "streamSelector": "video source",
+      "streamAttribute": "src",
+      "streamFromDetail": true,
+      "metaFields": [
+        { "key": "releaseInfo", "selector": ".date", "attribute": "text" },
+        { "key": "runtime", "selector": ".runtime", "attribute": "text" },
+        { "key": "genres", "selector": ".genres", "attribute": "text" },
+        { "key": "cast", "selector": ".cast", "attribute": "text" },
+        { "key": "director", "selector": ".director", "attribute": "text" },
+        { "key": "language", "selector": ".language", "attribute": "text" },
+        { "key": "country", "selector": ".country", "attribute": "text" },
+        { "key": "awards", "selector": ".awards", "attribute": "text" },
+        { "key": "website", "selector": "a.website", "attribute": "href" },
+        { "key": "background", "selector": ".background", "attribute": "src" },
+        { "key": "logo", "selector": ".logo", "attribute": "src" },
+        { "key": "certification", "selector": ".certification", "attribute": "text" },
+        { "key": "imdbRating", "selector": ".rating", "attribute": "text" }
+      ]
+    },
+    {
+      "id": "parties",
+      "name": "Parties",
+      "pageUrl": "https://your-site.example/parties/",
+      "itemSelector": ".video-card",
+      "titleSelector": ".title",
+      "titleAttribute": "text",
+      "descriptionSelector": ".description",
+      "descriptionAttribute": "text",
+      "posterSelector": ".poster img",
+      "posterAttribute": "src",
+      "detailLinkSelector": "a.watch",
+      "detailLinkAttribute": "href",
+      "streamSelector": "video source",
+      "streamAttribute": "src",
+      "streamFromDetail": true,
+      "metaFields": []
+    }
+  ]
+}

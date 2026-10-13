@@ -4,6 +4,10 @@ compatibility_date = "2026-10-13"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
+[[routes]]
+pattern = "stremio.juzemaru.com"
+custom_domain = true
+
 [assets]
 directory = "./site"
 binding = "ASSETS"

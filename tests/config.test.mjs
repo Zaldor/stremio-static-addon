@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { decodeConfig, encodeConfig, sanitizeConfig } from '../worker/config.js';
 
 const validSource = {
@@ -18,6 +19,14 @@ const validSource = {
 test('configuration survives a URL-safe encode/decode round trip', () => {
   const config = { version: 1, sources: [{ ...validSource, name: 'Vacanze in Sicilia' }] };
   assert.deepEqual(decodeConfig(encodeConfig(config)), sanitizeConfig(config));
+});
+
+test('downloadable JSON starter template is valid and demonstrates multiple pages', async () => {
+  const template = JSON.parse(await readFile(new URL('../site/config-template.json', import.meta.url), 'utf8'));
+  const config = sanitizeConfig(template);
+  assert.equal(config.sources.length, 2);
+  assert.equal(config.sources[0].metaFields.length, 13);
+  assert.equal(config.sources[1].id, 'parties');
 });
 
 test('configuration preserves multiple pages, selectors, attributes, and metadata fields', () => {
