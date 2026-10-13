@@ -1,6 +1,6 @@
-# Stremio Memory Catalog
+# JuzeReel
 
-A Cloudflare Worker add-on that turns pages on your own website into Stremio video catalogs. Add a page URL, choose CSS selectors for its video cards and fields, preview the extraction, then install the generated manifest URL in Stremio.
+A Stremio add-on hosted on Cloudflare that turns pages on your own website into personal video catalogs. Add a page URL, choose CSS selectors for its video cards and fields, preview the extraction, then install the generated manifest URL in Stremio.
 
 Each configured page becomes a catalog, such as **Holidays** or **Parties**. Catalog refreshes fetch the page again, so changes to the page's content appear without changing the add-on configuration. The configuration is carried in the install URL; adding or changing a source creates a new install URL that should be installed in Stremio.
 

@@ -195,8 +195,8 @@ function makeManifest(config) {
   return {
     id: 'org.juzemaru.stremio-memory-archive',
     version: '1.0.0',
-    name: 'My Memories',
-    description: 'Personal video memories from your own web pages.',
+    name: 'JuzeReel',
+    description: 'A personal video memory catalog from your own web pages.',
     types: ['movie'],
     catalogs: config.sources.map(source => ({
       type: 'movie',
