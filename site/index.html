@@ -13,6 +13,9 @@
     .sources{display:grid;gap:16px}.source{border:1px solid var(--line);background:linear-gradient(145deg,#1b221d,#171d19);border-radius:16px;padding:20px}.source-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}.source-head h2{margin:0;font-size:18px;font-weight:650}.source-head .index{color:var(--mint);font-size:11px;letter-spacing:.12em;text-transform:uppercase}.source-head button{border:0;background:transparent;color:#e7a39b;padding:7px 0;cursor:pointer;font:inherit;font-size:13px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.field{display:grid;gap:7px;min-width:0}.field.wide{grid-column:1/-1}label,.label{font-size:12px;font-weight:650;color:#d8e0d8}.hint{font-size:11px;color:#88948b;line-height:1.4}input,select{width:100%;min-width:0;border:1px solid #3b4840;border-radius:9px;background:#111713;color:var(--text);padding:11px 12px;font:inherit;font-size:13px;outline:none}input:focus,select:focus{border-color:var(--mint2);box-shadow:0 0 0 3px #69ba8a20}input::placeholder{color:#6f7b72}.selectors{margin-top:18px;padding-top:17px;border-top:1px solid #2d3830}.selectors h3{font-size:13px;margin:0 0 13px;color:#dfe8df}.check{display:flex;align-items:flex-start;gap:9px;margin-top:14px;color:#c2cdc3;font-size:13px;line-height:1.45}.check input{width:16px;min-width:16px;margin:1px 0 0;accent-color:var(--mint2)}.meta-fields{display:grid;gap:8px}.meta-row{display:grid;grid-template-columns:1fr 2fr 1fr auto;gap:8px;align-items:center}.meta-row button{background:#2b211f;color:#ffb3a9;border:1px solid #51332e;border-radius:8px;padding:8px 10px;cursor:pointer}.preview{display:none;margin-top:14px;border:1px solid #405849;background:#142019;border-radius:11px;padding:13px;color:#d8e9dc;font-size:12px;line-height:1.55;overflow-wrap:anywhere}.preview.show{display:block}.preview .ok{color:var(--mint);font-weight:700}.preview .error{color:#ff9d8f}.preview img{max-width:72px;max-height:90px;object-fit:cover;border-radius:5px;vertical-align:middle;margin:6px 10px 0 0}.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:17px 0 0}.button{border:1px solid transparent;border-radius:10px;padding:11px 15px;font:inherit;font-size:13px;font-weight:750;cursor:pointer;transition:transform .12s,background .12s}.button:hover{transform:translateY(-1px)}.primary{background:var(--mint);color:#102017}.secondary{background:#202a23;border-color:#3c4c41;color:#e4ede5}.small{padding:8px 11px;font-size:12px}.summary{margin-top:25px;border:1px solid #536b58;background:linear-gradient(140deg,#1a2a20,#18231b);border-radius:16px;padding:20px;display:none}.summary.show{display:block}.summary h2{font-size:20px;margin:0 0 6px}.summary p{font-size:13px;color:#b7c4b8;line-height:1.55;margin:8px 0 14px}.summary .url{overflow-wrap:anywhere;border-radius:8px;background:#101711;border:1px solid #34483a;padding:10px 12px;color:#d9e8db;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;margin:8px 0}.summary .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.notice{margin-top:23px;padding:14px 16px;border-left:3px solid var(--gold);background:#211e16;border-radius:0 9px 9px 0;color:#d2c9ac;font-size:12px;line-height:1.6}.footer{margin-top:34px;color:#829087;font-size:11px;line-height:1.65}.footer a{color:#b8d5bf}
     @media(max-width:640px){.wrap{padding-top:28px}.grid{grid-template-columns:1fr}.field.wide{grid-column:auto}.source{padding:16px}.meta-row{grid-template-columns:1fr 1fr}.meta-row input:nth-child(2){grid-column:1/-1}.meta-row button{justify-self:start}.steps{gap:7px}.step{font-size:11px}}
   </style>
+  <style>
+    .config-io{margin:22px 0;border:1px solid var(--line);border-radius:14px;background:#171e19;overflow:hidden}.config-io summary{cursor:pointer;list-style:none;padding:15px 18px;color:#dfe8df;font-weight:700;font-size:14px}.config-io summary::-webkit-details-marker{display:none}.config-io summary::after{content:'＋';float:right;color:var(--mint)}.config-io[open] summary::after{content:'−'}.config-io-body{padding:0 18px 18px}.config-io p{margin:0 0 14px;color:var(--muted);font-size:12px;line-height:1.55}.config-io textarea{display:block;width:100%;min-height:220px;resize:vertical;border:1px solid #3b4840;border-radius:9px;background:#111713;color:var(--text);padding:12px;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;outline:none}.config-io textarea:focus{border-color:var(--mint2);box-shadow:0 0 0 3px #69ba8a20}.config-io textarea::placeholder{color:#6f7b72}.config-file{display:none}.config-feedback{min-height:18px;margin-top:10px;color:var(--mint);font-size:12px;line-height:1.5}.config-feedback.error{color:#ff9d8f}
+  </style>
 </head>
 <body>
   <main class="wrap">
@@ -29,6 +32,23 @@
       </div>
       <div id="form-error" class="preview show" role="alert" style="display:none"></div>
     </form>
+
+    <details class="config-io" id="config-io">
+      <summary>Load or save this setup as JSON</summary>
+      <div class="config-io-body">
+        <p>JSON contains every configured page, CSS selector, attribute, stream option, and additional Stremio metadata field. Loading JSON replaces the pages in this form.</p>
+        <label class="label" for="config-json">Configuration JSON</label>
+        <textarea id="config-json" spellcheck="false" placeholder='Paste a version 1 configuration here, or export the current setup first. Expected shape: {"version":1,"sources":[...]}'></textarea>
+        <div class="controls">
+          <button type="button" class="button primary" id="load-json">Replace setup with JSON</button>
+          <label class="button secondary" for="config-file">Import JSON file</label>
+          <input class="config-file" type="file" id="config-file" accept="application/json,.json">
+          <button type="button" class="button secondary" id="export-json">Update JSON from setup</button>
+          <button type="button" class="button secondary" id="download-json">Download JSON</button>
+        </div>
+        <div class="config-feedback" id="config-feedback" role="status" aria-live="polite"></div>
+      </div>
+    </details>
 
     <section id="install-summary" class="summary" aria-live="polite">
       <h2>Your catalog is ready</h2>
@@ -79,13 +99,17 @@
     </section>
   </template>
 
-  <script>
+  <script type="module">
+    import { sanitizeConfig } from '/config.js';
+
     const META_KEYS = ['releaseInfo','runtime','genres','cast','director','language','country','awards','website','background','logo','certification','imdbRating'];
     const fields = ['name','pageUrl','itemSelector','titleSelector','titleAttribute','descriptionSelector','descriptionAttribute','posterSelector','posterAttribute','detailLinkSelector','detailLinkAttribute','streamSelector','streamAttribute','streamFromDetail'];
     const sourcesEl = document.getElementById('sources');
     const sourceTemplate = document.getElementById('source-template');
     const summary = document.getElementById('install-summary');
     const formError = document.getElementById('form-error');
+    const configText = document.getElementById('config-json');
+    const configFeedback = document.getElementById('config-feedback');
     let sourceCounter = 0;
 
     function slug(text, fallback) {
@@ -115,6 +139,7 @@
       sourceCounter += 1;
       const fragment = sourceTemplate.content.cloneNode(true);
       const card = fragment.querySelector('.source');
+      card.dataset.sourceId = source.id || '';
       for (const key of fields) {
         const input = card.querySelector(`[data-field="${key}"]`);
         if (!input) continue;
@@ -125,7 +150,13 @@
       card.querySelector('[data-field="name"]').addEventListener('input', event => { heading.textContent = event.target.value || 'Video page'; });
       heading.textContent = source.name || 'Video page';
       card.querySelector('[data-action="remove"]').addEventListener('click', () => { card.remove(); updateSourceNumbers(); });
-      card.querySelector('[data-action="add-meta"]').addEventListener('click', () => addMetaRow(card.querySelector('[data-meta-fields]')));
+      card.querySelector('[data-action="add-meta"]').addEventListener('click', () => {
+        if (card.querySelectorAll('.meta-row').length >= META_KEYS.length) {
+          showError(`You can configure up to ${META_KEYS.length} metadata fields per page.`);
+          return;
+        }
+        addMetaRow(card.querySelector('[data-meta-fields]'));
+      });
       card.querySelector('[data-action="test"]').addEventListener('click', () => testSource(card));
       for (const meta of source.metaFields || []) addMetaRow(card.querySelector('[data-meta-fields]'), meta);
       sourcesEl.append(fragment); updateSourceNumbers();
@@ -138,13 +169,36 @@
       summary.classList.remove('show');
     }
     function clearError() { formError.textContent = ''; formError.style.display = 'none'; formError.classList.remove('show'); }
+    function setConfigFeedback(message, isError = false) {
+      configFeedback.textContent = message;
+      configFeedback.classList.toggle('error', isError);
+    }
+    function saveDraft(config) {
+      try { localStorage.setItem('stremio-memory-config', JSON.stringify(config)); } catch {}
+    }
+    function applyJsonConfig(text) {
+      const config = sanitizeConfig(JSON.parse(text));
+      configText.value = JSON.stringify(config, null, 2);
+      sourcesEl.replaceChildren();
+      config.sources.forEach(restoreSource);
+      summary.classList.remove('show');
+      clearError();
+      saveDraft(config);
+      setConfigFeedback(`Loaded ${config.sources.length} page${config.sources.length === 1 ? '' : 's'} and all configured selectors.`);
+    }
+    function currentJsonConfig() {
+      const config = sanitizeConfig(collectConfig());
+      configText.value = JSON.stringify(config, null, 2);
+      setConfigFeedback(`JSON updated with ${config.sources.length} page${config.sources.length === 1 ? '' : 's'}.`);
+      return configText.value;
+    }
     function collectSource(card, index) {
       const source = {};
       for (const key of fields) {
         const input = card.querySelector(`[data-field="${key}"]`);
         source[key] = key === 'streamFromDetail' ? input.checked : input.value.trim();
       }
-      source.id = slug(source.name, `source-${index + 1}`);
+      source.id = card.dataset.sourceId || slug(source.name, `source-${index + 1}`);
       source.metaFields = [...card.querySelectorAll('.meta-row')].map(row => ({
         key: row.querySelector('[data-meta-key]').value,
         selector: row.querySelector('[data-meta-selector]').value.trim(),
@@ -201,15 +255,37 @@
     }
 
     document.getElementById('add-source').addEventListener('click', () => addSource({ name:`Collection ${sourcesEl.children.length + 1}` }));
+    document.getElementById('load-json').addEventListener('click', () => {
+      try { applyJsonConfig(configText.value); }
+      catch (error) { setConfigFeedback(error.message || 'Could not load that JSON configuration.', true); }
+    });
+    document.getElementById('config-file').addEventListener('change', async event => {
+      const [file] = event.target.files || [];
+      if (!file) return;
+      try { applyJsonConfig(await file.text()); }
+      catch (error) { setConfigFeedback(error.message || 'Could not load that JSON file.', true); }
+      event.target.value = '';
+    });
+    document.getElementById('export-json').addEventListener('click', () => {
+      try { currentJsonConfig(); }
+      catch (error) { setConfigFeedback(error.message || 'Could not export this setup.', true); }
+    });
+    document.getElementById('download-json').addEventListener('click', () => {
+      try {
+        const blob = new Blob([currentJsonConfig()], { type:'application/json;charset=utf-8' });
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = 'stremio-memory-config.json';
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      } catch (error) { setConfigFeedback(error.message || 'Could not download this setup.', true); }
+    });
     document.getElementById('setup-form').addEventListener('submit', event => {
       event.preventDefault(); clearError();
       try {
         if (!sourcesEl.children.length) throw new Error('Add at least one page.');
-        const config = collectConfig();
-        for (const [index, source] of config.sources.entries()) {
-          if (!source.name || !source.pageUrl || !source.itemSelector || !source.titleSelector || !source.streamSelector) throw new Error(`Complete the required fields in source ${index + 1}.`);
-          if (source.streamFromDetail && !source.detailLinkSelector) throw new Error(`Add a detail link selector in source ${index + 1}, or uncheck the detail-page option.`);
-        }
+        const config = sanitizeConfig(collectConfig());
         const token = encodeToken(config);
         if (token.length > 12000) throw new Error('This setup is too large for an install URL. Reduce the number of fields or pages.');
         const manifestUrl = `${location.origin}/${token}/manifest.json`;
@@ -218,7 +294,7 @@
         document.getElementById('install-button').href = stremioUrl;
         document.getElementById('edit-button').href = `/${token}/configure`;
         summary.classList.add('show'); summary.scrollIntoView({behavior:'smooth',block:'center'});
-        localStorage.setItem('stremio-memory-config', JSON.stringify(config));
+        saveDraft(config);
       } catch (error) { showError(error.message); }
     });
     document.getElementById('copy-button').addEventListener('click', async () => {

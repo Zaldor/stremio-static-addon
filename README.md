@@ -4,6 +4,12 @@ A Cloudflare Worker add-on that turns pages on your own website into Stremio vid
 
 Each configured page becomes a catalog, such as **Holidays** or **Parties**. Catalog refreshes fetch the page again, so changes to the page's content appear without changing the add-on configuration. The configuration is carried in the install URL; adding or changing a source creates a new install URL that should be installed in Stremio.
 
+## Import and export setup JSON
+
+The setup page can import a configuration by pasting JSON or choosing a `.json` file. It can also export the current setup to the text box or download it as `stremio-memory-config.json`. The version 1 JSON includes every configured page, selector, HTML attribute, detail-page stream option, and additional Stremio metadata field. Loading a file replaces the pages currently shown in the form; after loading, create a new Stremio install link to use that configuration.
+
+Imported pages must use public HTTPS URLs and the configuration supports up to 12 pages and all 13 additional Stremio metadata fields per page. The JSON file contains source URLs and selectors, so keep it private if that information should not be shared.
+
 ## What it extracts
 
 - Required: page URL, repeated video-item selector, title selector, and playable video URL selector.

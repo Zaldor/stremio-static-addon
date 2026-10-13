@@ -270,9 +270,9 @@ async function preview(sourceInput) {
   };
 }
 
-async function serveIndex(env, request) {
+async function serveAsset(env, request, path = '/') {
   if (!env.ASSETS) return response('Configurator asset is missing.', 500, 'text/plain; charset=utf-8', request.method);
-  const assetUrl = new URL('/', request.url);
+  const assetUrl = new URL(path, request.url);
   const assetRequest = new Request(assetUrl, { method: 'GET', headers: request.headers });
   const asset = await env.ASSETS.fetch(assetRequest);
   const headers = new Headers(asset.headers);
@@ -295,7 +295,10 @@ export default {
     const url = new URL(request.url);
     const segments = url.pathname.split('/').filter(Boolean);
     if (url.pathname === '/' || url.pathname === '/configure' || url.pathname === '/configure/') {
-      return serveIndex(env, request);
+      return serveAsset(env, request);
+    }
+    if (url.pathname === '/config.js') {
+      return serveAsset(env, request, '/config.js');
     }
     if (url.pathname === '/api/preview' && method === 'POST') {
       try {
@@ -319,7 +322,7 @@ export default {
       return errorJson(error, 400, method);
     }
 
-    if (segments.length === 2 && segments[1] === 'configure') return serveIndex(env, request);
+    if (segments.length === 2 && segments[1] === 'configure') return serveAsset(env, request);
     if (segments.length === 2 && segments[1] === 'config.json') return json(config, 200, method);
     if (segments.length === 2 && segments[1] === 'manifest.json') return json(makeManifest(config), 200, method);
     if (segments.length < 4) return json({ error: 'Not found.' }, 404, method);
