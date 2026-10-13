@@ -26,7 +26,7 @@ Open `http://localhost:8787/` to configure sources. Use **Test this page** befor
 
 ## Deploy to Cloudflare Workers
 
-1. Create a Cloudflare API token with permission to edit Workers and account settings, then add it to this GitHub repository as `CLOUDFLARE_API_TOKEN`.
+1. Create a Cloudflare API token with **Workers Admin** permission for the first deployment (the workflow creates the Worker), plus **Account Settings Read** if Wrangler requests it. Add it to this GitHub repository as `CLOUDFLARE_API_TOKEN`. After the Worker exists, the token can be narrowed to **Workers Editor** for future deploys.
 2. Add the Cloudflare account ID as repository secret `CLOUDFLARE_ACCOUNT_ID`.
 3. Push to `main`. `.github/workflows/cloudflare-worker.yml` installs dependencies, runs checks, and deploys the Worker with Wrangler.
 4. The workflow output gives the `workers.dev` address. Open its homepage, configure your pages, then install the generated manifest URL.
