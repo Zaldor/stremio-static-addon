@@ -21,7 +21,7 @@ export function assertPublicHttps(value, label = 'URL') {
   } catch {
     throw new Error(`${label} must be a valid absolute URL.`);
   }
-  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
   if (url.protocol !== 'https:') throw new Error(`${label} must use HTTPS.`);
   if (url.username || url.password) throw new Error(`${label} must not contain credentials.`);
   if (!host.includes('.') || host === 'localhost' || host.endsWith('.localhost') ||
