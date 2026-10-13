@@ -153,8 +153,7 @@ function makeMeta(source, scope, baseUrl, stableKey) {
 }
 
 function cacheKey(source) {
-  return [source.id, source.pageUrl, source.itemSelector, source.titleSelector,
-    source.streamSelector, source.streamFromDetail ? 'detail' : 'direct'].join('|');
+  return JSON.stringify(source);
 }
 
 async function getSourceItems(source, force = false) {
@@ -300,8 +299,9 @@ export default {
     }
     if (url.pathname === '/api/preview' && method === 'POST') {
       try {
-        if (Number(request.headers.get('Content-Length') || 0) > 16_000) throw new Error('Preview configuration is too large.');
-        const body = await request.json();
+        const rawBody = await request.text();
+        if (new TextEncoder().encode(rawBody).byteLength > 16_000) throw new Error('Preview configuration is too large.');
+        const body = JSON.parse(rawBody);
         return json(await preview(body.source), 200, method);
       } catch (error) {
         return errorJson(error, 400, method);
