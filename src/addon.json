@@ -1,0 +1,31 @@
+{
+  "manifest": {
+    "id": "org.example.stremio-static-catalog",
+    "version": "1.0.0",
+    "name": "Static Catalog Starter",
+    "description": "A GitHub Pages hosted Stremio catalog for your own authorized media links."
+  },
+  "catalogs": [
+    {
+      "type": "movie",
+      "id": "open-movie-sample",
+      "name": "Open Movie Sample",
+      "items": [
+        {
+          "id": "tt1254207",
+          "type": "movie",
+          "name": "Big Buck Bunny",
+          "poster": "https://image.tmdb.org/t/p/w600_and_h900_bestv2/uVEFQvFMMsg4e6yb03xOfVsDz4o.jpg",
+          "description": "© 2008 Blender Foundation / bigbuckbunny.org · CC BY 3.0. Replace this example entry and stream URL with content you are authorized to distribute.",
+          "releaseInfo": "2008",
+          "streams": [
+            {
+              "name": "Open sample · MP4",
+              "url": "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
