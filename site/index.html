@@ -15,6 +15,8 @@
   </style>
   <style>
     .config-io{margin:22px 0;border:1px solid var(--line);border-radius:14px;background:#171e19;overflow:hidden}.config-io summary{cursor:pointer;list-style:none;padding:15px 18px;color:#dfe8df;font-weight:700;font-size:14px}.config-io summary::-webkit-details-marker{display:none}.config-io summary::after{content:'＋';float:right;color:var(--mint)}.config-io[open] summary::after{content:'−'}.config-io-body{padding:0 18px 18px}.config-io p{margin:0 0 14px;color:var(--muted);font-size:12px;line-height:1.55}.config-io textarea{display:block;width:100%;min-height:220px;resize:vertical;border:1px solid #3b4840;border-radius:9px;background:#111713;color:var(--text);padding:12px;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;outline:none}.config-io textarea:focus{border-color:var(--mint2);box-shadow:0 0 0 3px #69ba8a20}.config-io textarea::placeholder{color:#6f7b72}.config-file{display:none}.config-feedback{min-height:18px;margin-top:10px;color:var(--mint);font-size:12px;line-height:1.5}.config-feedback.error{color:#ff9d8f}
+    .analysis-options{display:flex;align-items:center;gap:8px;color:#b8c6ba;font-size:11px}.analysis-options input{width:15px;min-width:15px;accent-color:var(--mint2)}.candidate{margin-top:12px;padding:12px;border:1px solid #344b3a;border-radius:9px;background:#111a14}.candidate-head{display:flex;justify-content:space-between;gap:8px;align-items:center}.candidate-head strong{color:var(--mint)}.candidate p{margin:7px 0;color:#bdc9bd}.candidate code{color:#e6d7a4;overflow-wrap:anywhere}.candidate .candidate-samples{display:grid;gap:4px;margin:8px 0}.candidate .candidate-foot{color:#94a398;font-size:11px}.candidate button{margin-top:8px}.analysis-empty{color:#c6c9bc}.controls button:disabled{opacity:.55;cursor:wait;transform:none}
+    .preview-items{display:grid;gap:9px;margin-top:12px}.preview-item{padding:11px;border:1px solid #31483a;border-radius:9px;background:#101811}.preview-item h4{margin:0 0 5px;font-size:13px;color:#eef5ee}.preview-item p{margin:5px 0;color:#bdc9bd}.preview-item img{max-width:72px;max-height:90px;object-fit:cover;border-radius:5px;margin-top:6px}.preview-item .stream-ok{color:var(--mint)}.preview-item .stream-error{color:#ff9d8f}.preview-item a{display:block;margin-top:5px;color:#e6d7a4;overflow-wrap:anywhere}.preview .raw-preview{margin-top:13px;border-top:1px solid #31483a;padding-top:11px}.preview .raw-preview summary{cursor:pointer;color:#dce8dc}.preview .raw-preview pre{max-height:360px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:10px;border-radius:7px;background:#0d130f;color:#d7e4d8;font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
   </style>
 </head>
 <body>
@@ -62,8 +64,8 @@
       </div>
     </section>
 
-    <aside class="notice"><strong>Page updates are automatic:</strong> when Stremio refreshes a configured catalog, the add-on reads the current page. Adding a new category changes the setup link, so install the newly generated link in Stremio. Pages must be publicly reachable, and the video selector must find a direct playable video URL. This setup tool does not store your configuration on a server; the install URL contains it.</aside>
-    <p class="footer">Use CSS selectors such as <code>.video-card</code>, <code>.title</code>, <code>img</code>, or <code>video source</code>. The preview checks what the add-on can read from the page. This add-on returns the media URLs you configure; it does not copy your videos.</p>
+    <aside class="notice"><strong>Page updates are automatic:</strong> when Stremio refreshes a configured catalog, the add-on reads the current page. Use <em>Test &amp; preview output</em> to inspect the metadata and stream responses before installing. Stremio's Configure control opens this editor for the installed setup; saving changed pages creates a new install link. Pages must be publicly reachable, and the video selector must find a direct playable video URL. This setup tool does not store your configuration on a server; the install URL contains it.</aside>
+    <p class="footer">Use CSS selectors such as <code>.video-card</code>, <code>.title</code>, <code>img</code>, or <code>video source</code>. The preview shows the Stremio catalog metadata and checks sample stream URLs, including detail-page streams. This add-on returns the media URLs you configure; it does not copy your videos.</p>
   </main>
 
   <template id="source-template">
@@ -92,8 +94,9 @@
         <div class="field" style="margin-top:17px">
           <div class="label">Additional Stremio metadata</div>
           <div class="meta-fields" data-meta-fields></div>
-          <div class="controls"><button type="button" class="button secondary small" data-action="add-meta">＋ Add metadata field</button><button type="button" class="button secondary small" data-action="test">Test this page</button></div>
+          <div class="controls"><button type="button" class="button secondary small" data-action="add-meta">＋ Add metadata field</button><button type="button" class="button secondary small" data-action="analyze">Analyze &amp; learn</button><button type="button" class="button secondary small" data-action="test">Test &amp; preview output</button><label class="analysis-options"><input type="checkbox" data-rendered><span>Render JavaScript page (uses Browser Run)</span></label></div>
           <div class="preview" data-preview aria-live="polite"></div>
+          <div class="hint">Analyze checks repeated cards and validates suggestions on samples. It can inspect up to two same-origin detail pages for media. Test &amp; preview shows the Stremio metadata response and checks up to three detail-page streams. Render JavaScript page when the source is assembled in the browser; that can render up to three pages and takes longer.</div>
           <div class="hint">Optional fields include releaseInfo, runtime, genres, cast, director, language, country, awards, website, background, logo and certification.</div>
         </div>
       </div>
@@ -159,6 +162,12 @@
         addMetaRow(card.querySelector('[data-meta-fields]'));
       });
       card.querySelector('[data-action="test"]').addEventListener('click', () => testSource(card));
+      card.querySelector('[data-action="analyze"]').addEventListener('click', () => analyzeSource(card));
+      card.querySelector('[data-preview]').addEventListener('click', event => {
+        const button = event.target.closest('[data-apply-candidate]');
+        if (!button || !card._analysis) return;
+        applyCandidate(card, Number(button.dataset.applyCandidate));
+      });
       for (const meta of source.metaFields || []) addMetaRow(card.querySelector('[data-meta-fields]'), meta);
       sourcesEl.append(fragment); updateSourceNumbers();
     }
@@ -225,14 +234,152 @@
     }
     async function testSource(card) {
       const preview = card.querySelector('[data-preview]');
+      const button = card.querySelector('[data-action="test"]');
+      card._analysis = null;
+      card._previewOutput = null;
       preview.classList.add('show'); preview.innerHTML = 'Checking page and selectors…';
+      button.disabled = true;
       try {
         const response = await fetch('/api/preview', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({source:collectSource(card, [...sourcesEl.children].indexOf(card))}) });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Could not read that page.');
-        const sample = data.sample.map(item => `<div><strong>${escapeHtml(item.name)}</strong>${item.description ? `<br>${escapeHtml(item.description)}`:''}${item.poster ? `<br><img src="${escapeHtml(item.poster)}" alt="">`:''}<br><span class="hint">${escapeHtml(item.videoUrl || 'No video URL found')}</span></div>`).join('<hr style="border:0;border-top:1px solid #31483a;margin:10px 0">');
-        preview.innerHTML = `<span class="ok">Found ${data.matches} video item${data.matches === 1 ? '' : 's'}.</span>${sample || '<p>No matching videos yet. Check the item and title selectors.</p>'}`;
+        card._previewOutput = data;
+        const metas = data.catalogResponse?.metas || [];
+        const streams = new Map((data.streamResponses || []).map(item => [item.metaId, item]));
+        preview.innerHTML = `<span class="ok">Found ${data.matches} video item${data.matches === 1 ? '' : 's'}.</span>${data.matches > metas.length ? ` Showing the first ${metas.length}.` : ''}`;
+        if (!metas.length) {
+          const empty = document.createElement('p');
+          empty.textContent = 'No matching videos yet. Check the item, title, and video URL selectors.';
+          preview.append(empty);
+        }
+        const list = document.createElement('div');
+        list.className = 'preview-items';
+        for (const meta of metas) {
+          const item = document.createElement('article');
+          item.className = 'preview-item';
+          const title = document.createElement('h4');
+          title.textContent = meta.name || '(Untitled item)';
+          item.append(title);
+          if (meta.description) {
+            const description = document.createElement('p');
+            description.textContent = meta.description;
+            item.append(description);
+          }
+          if (meta.poster) {
+            const poster = document.createElement('img');
+            poster.src = meta.poster;
+            poster.alt = `Poster for ${meta.name || 'video'}`;
+            item.append(poster);
+          }
+          const stream = streams.get(meta.id);
+          const streamUrl = stream?.response?.streams?.[0]?.url;
+          const status = document.createElement('p');
+          if (streamUrl) {
+            status.className = 'stream-ok';
+            status.textContent = 'Stream URL resolved';
+            const link = document.createElement('a');
+            link.href = streamUrl;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = streamUrl;
+            item.append(status, link);
+          } else if (stream?.error) {
+            status.className = 'stream-error';
+            status.textContent = `Stream check failed: ${stream.error}`;
+            item.append(status);
+          } else {
+            status.textContent = stream?.note || 'Stream was not checked.';
+            item.append(status);
+          }
+          list.append(item);
+        }
+        if (metas.length) preview.append(list);
+        const raw = document.createElement('details');
+        raw.className = 'raw-preview';
+        const summary = document.createElement('summary');
+        summary.textContent = 'View raw Stremio output JSON';
+        const output = document.createElement('pre');
+        output.tabIndex = 0;
+        output.textContent = JSON.stringify({ catalogResponse: data.catalogResponse, streamResponses: data.streamResponses }, null, 2);
+        const copy = document.createElement('button');
+        copy.type = 'button';
+        copy.className = 'button secondary small';
+        copy.textContent = 'Copy output JSON';
+        copy.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(output.textContent);
+            copy.textContent = 'Copied';
+            setTimeout(() => { copy.textContent = 'Copy output JSON'; }, 1500);
+          } catch {
+            raw.open = true;
+            output.focus();
+            copy.textContent = 'Select the JSON above to copy';
+          }
+        });
+        raw.append(summary, output, copy);
+        preview.append(raw);
+      } catch (error) {
+        preview.innerHTML = `<span class="error">${escapeHtml(error.message)}</span>`;
+      } finally {
+        button.disabled = false;
+      }
+    }
+    function applyCandidate(card, index) {
+      const candidate = card._analysis?.candidates?.[index];
+      if (!candidate) return;
+      for (const [key, value] of Object.entries(candidate.suggestions)) {
+        const input = card.querySelector(`[data-field="${key}"]`);
+        if (!input) continue;
+        if (input.type === 'checkbox') input.checked = Boolean(value);
+        else input.value = value || '';
+      }
+      card.querySelector('.source-head h2').textContent = card.querySelector('[data-field="name"]').value || 'Video page';
+      const preview = card.querySelector('[data-preview]');
+      const mediaText = candidate.diagnostics.detailPagesWithMedia
+        ? ` Media was found on ${candidate.diagnostics.detailPagesWithMedia} detail page${candidate.diagnostics.detailPagesWithMedia === 1 ? '' : 's'}.`
+        : candidate.suggestions.streamFromDetail
+          ? ' Detail links were found, but no direct media was confirmed in the sampled detail pages; playback will try automatic media detection.'
+          : '';
+      preview.innerHTML = `<span class="ok">Applied pattern ${index + 1}.</span> Run “Test this page” to check the mapped fields.${escapeHtml(mediaText)}`;
+      preview.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+    function renderAnalysis(card, data) {
+      const preview = card.querySelector('[data-preview]');
+      card._analysis = data;
+      const mode = data.rendered ? 'Rendered page' : 'Page';
+      if (!data.candidates?.length) {
+        preview.innerHTML = `<span class="analysis-empty">${escapeHtml(mode)} analyzed, but no repeatable video pattern was found.</span>${(data.notes || []).map(note => `<p>${escapeHtml(note)}</p>`).join('')}<p>Try rendering the page if its content is added by JavaScript, or enter selectors manually.</p>`;
+        return;
+      }
+      const patterns = data.candidates.map((candidate, index) => {
+        const d = candidate.diagnostics;
+        const titleSamples = candidate.sample.map(item => item.title).filter(Boolean).slice(0, 3);
+        const media = d.directMedia
+          ? `${d.directMedia} item${d.directMedia === 1 ? '' : 's'} have direct media`
+          : d.detailPagesWithMedia
+            ? `media discovered on ${d.detailPagesWithMedia} detail page${d.detailPagesWithMedia === 1 ? '' : 's'}`
+            : d.detailLinks
+              ? `${d.detailLinks} detail link${d.detailLinks === 1 ? '' : 's'} found; media not confirmed`
+              : 'media URL pattern found';
+        return `<article class="candidate"><div class="candidate-head"><strong>Pattern ${index + 1}</strong><span>${Math.round(candidate.confidence * 100)}% confidence</span></div><p><code>${escapeHtml(candidate.suggestions.itemSelector)}</code> · ${d.matchedCards} repeated items · ${media}</p><div class="candidate-foot">Fields validated on ${d.sampledCards} samples: titles ${d.titleMatches}/${d.sampledCards}, posters ${d.posters}/${d.sampledCards}, links ${d.detailLinks}/${d.sampledCards}.${d.detailPagesTested ? ` Detail pages checked: ${d.detailPagesTested}.` : ''}</div>${titleSamples.length ? `<div class="candidate-samples">${titleSamples.map(title => `<span>• ${escapeHtml(title)}</span>`).join('')}</div>` : ''}<button type="button" class="button secondary small" data-apply-candidate="${index}">Apply this pattern</button></article>`;
+      }).join('');
+      preview.innerHTML = `<span class="ok">${escapeHtml(mode)} analyzed.</span> Review the inferred fields, then apply the pattern you want.${patterns}`;
+    }
+    async function analyzeSource(card) {
+      const preview = card.querySelector('[data-preview]');
+      const button = card.querySelector('[data-action="analyze"]');
+      const pageUrl = card.querySelector('[data-field="pageUrl"]').value.trim();
+      if (!pageUrl) { preview.classList.add('show'); preview.innerHTML = '<span class="error">Enter a page URL first.</span>'; return; }
+      card._analysis = null;
+      preview.classList.add('show'); preview.innerHTML = 'Analyzing page patterns and checking sample links…';
+      button.disabled = true;
+      try {
+        const response = await fetch('/api/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pageUrl, rendered:card.querySelector('[data-rendered]').checked}) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not analyze that page.');
+        renderAnalysis(card, data);
       } catch (error) { preview.innerHTML = `<span class="error">${escapeHtml(error.message)}</span>`; }
+      finally { button.disabled = false; }
     }
     function restoreSource(source, index) {
       addSource({ ...source, id: source.id || `source-${index + 1}` });

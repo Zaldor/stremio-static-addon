@@ -1,6 +1,6 @@
 # JuzeReel
 
-A Stremio add-on hosted on Cloudflare that turns pages on your own website into personal video catalogs. Add a page URL, choose CSS selectors for its video cards and fields, preview the extraction, then install the generated manifest URL in Stremio.
+A Stremio add-on hosted on Cloudflare that turns pages on your own website into personal video catalogs. Add a page URL, use **Analyze & learn** to review inferred selectors, test the extraction, then install the generated manifest URL in Stremio.
 
 Each configured page becomes a catalog, such as **Holidays** or **Parties**. Catalog refreshes fetch the page again, so changes to the page's content appear without changing the add-on configuration. The configuration is carried in the install URL; adding or changing a source creates a new install URL that should be installed in Stremio.
 
@@ -16,7 +16,19 @@ Imported pages must use public HTTPS URLs and the configuration supports up to 1
 - Optional: description, poster, detail-page link, and additional Stremio metadata such as date, runtime, genres, cast, director, language, awards, or rating.
 - Video URLs can be selected on the list page or on each linked detail page.
 
+## Analyze & learn
+
+The analyzer looks for repeated sibling structures, proposes selectors for the item, title, poster, description, and detail link, then checks those fields across up to five samples. For detail-page sources, it can inspect up to two same-site links and look for video/source elements, common video data attributes, media-file links, and video URLs in JSON-LD or other structured JSON. During playback the add-on also uses the configured selector first, then tries those common media patterns as a fallback.
+
+Select **Render JavaScript page** when the website adds its cards after the initial HTML arrives. Cloudflare Browser Run loads the page in a headless browser to capture rendered markup and can render up to two same-origin detail pages for media discovery, so one analysis can render up to three pages. The Worker throttles rapid repeat requests where possible, and Cloudflare account usage limits still apply. Static mode does not execute page scripts; rendered mode lets the browser execute them to display the page. Neither mode signs into sites or bypasses access controls. Review each suggested pattern and choose **Apply this pattern** before testing or installing it; suggestions never replace your selectors automatically.
+
 The page and media must be publicly reachable over HTTPS. A selector must identify a direct URL that Stremio can play; a page containing an embedded player is not necessarily a playable stream. The generated manifest URL contains the source URLs and selectors, so treat it as private if those details should not be shared. This version does not sign in to websites or handle protected pages.
+
+## Test and configure in Stremio
+
+Use **Test & preview output** on each page before installing. It shows the first five catalog metadata objects in Stremio's `metas` response, checks direct stream URLs, and tries the configured selector on up to three detail pages. Expand **View raw Stremio output JSON** to copy the exact catalog and stream response shapes for troubleshooting.
+
+Installed manifests advertise `behaviorHints.configurable`, so Stremio shows a **Configure** action for the add-on. It opens the hosted editor at that install URL's `/configure` route and loads the setup carried by that URL. Saving changed sources produces a new install link; install that link in Stremio to use the updated setup.
 
 ## Local development
 
@@ -28,7 +40,7 @@ npm run check
 npm run dev
 ```
 
-Open `http://localhost:8787/` to configure sources. Use **Test this page** before creating the Stremio install link.
+Open `http://localhost:8787/` to configure sources. Use **Analyze & learn** to get selector suggestions, then use **Test this page** before creating the Stremio install link. Cloudflare Browser Run Quick Actions require remote mode during local development; run `npx wrangler dev --remote` to test rendered-page analysis locally.
 
 ## Deploy to Cloudflare Workers
 

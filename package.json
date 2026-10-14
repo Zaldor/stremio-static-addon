@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "check": "node --check worker/index.js && node --test tests/*.test.mjs"
+    "check": "node --check worker/index.js && node --check worker/analyzer.js && node --test tests/*.test.mjs"
   },
   "dependencies": {
     "cheerio": "^1.0.0"

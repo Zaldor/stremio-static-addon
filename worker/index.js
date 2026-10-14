@@ -1,10 +1,14 @@
 import { load as loadHtml } from 'cheerio';
 import { assertPublicHttps, decodeBase64Url, decodeConfig, encodeBase64Url, sanitizeConfig } from './config.js';
+import { analyzeHtml, extractMediaUrl, inspectDetailMedia } from './analyzer.js';
+import INLINE_ASSETS from './inline-assets.js';
 
 const MAX_HTML_BYTES = 1_500_000;
 const MAX_ITEMS = 100;
 const PAGE_CACHE_MS = 30_000;
 const pageCache = new Map();
+const analysisRequests = new Map();
+const renderedRequests = new Map();
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,7 +42,7 @@ function publicUrl(value, base, label) {
   return assertPublicHttps(url.href, label).href;
 }
 
-async function readLimitedBody(responseBody) {
+async function readLimitedBody(responseBody, limit = MAX_HTML_BYTES, tooLargeMessage = 'The source page is larger than 1.5 MB.') {
   if (!responseBody) return '';
   const reader = responseBody.getReader();
   const chunks = [];
@@ -47,9 +51,9 @@ async function readLimitedBody(responseBody) {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.byteLength;
-    if (total > MAX_HTML_BYTES) {
+    if (total > limit) {
       await reader.cancel();
-      throw new Error('The source page is larger than 1.5 MB.');
+      throw new Error(tooLargeMessage);
     }
     chunks.push(value);
   }
@@ -119,6 +123,25 @@ function readField(scope, selector, attribute, baseUrl, valueIsUrl = false) {
   }
 }
 
+function requestKey(request) {
+  return request.headers.get('CF-Connecting-IP') || 'unknown';
+}
+
+function allowRequest(map, request, intervalMs, maxEntries = 1200) {
+  const now = Date.now();
+  const key = requestKey(request);
+  const previous = map.get(key) || 0;
+  if (now - previous < intervalMs) return false;
+  map.set(key, now);
+  if (map.size > maxEntries) {
+    for (const [entryKey, timestamp] of map) {
+      if (now - timestamp > 60_000) map.delete(entryKey);
+      if (map.size <= maxEntries) break;
+    }
+  }
+  return true;
+}
+
 function parseMetaFields(scope, fields, baseUrl) {
   const values = {};
   for (const field of fields || []) {
@@ -178,7 +201,7 @@ async function getSourceItems(source, force = false) {
       : '';
     const directStreamUrl = source.streamFromDetail
       ? ''
-      : readField(card, source.streamSelector, source.streamAttribute, url, true);
+      : extractMediaUrl($, element, url, source.streamSelector, source.streamAttribute);
     const stableKey = source.streamFromDetail ? detailUrl : directStreamUrl;
     if (!stableKey) return;
     const meta = makeMeta(source, card, url, stableKey);
@@ -198,6 +221,7 @@ function makeManifest(config) {
     name: 'JuzeReel',
     description: 'A personal video memory catalog from your own web pages.',
     types: ['movie'],
+    behaviorHints: { configurable: true },
     catalogs: config.sources.map(source => ({
       type: 'movie',
       id: source.id,
@@ -244,7 +268,7 @@ function parseStreamFromDetail(source, detailUrl) {
     let $;
     try {
       $ = loadHtml(html);
-      const value = readField($(html), source.streamSelector, source.streamAttribute, url, true);
+      const value = extractMediaUrl($, $.root(), url, source.streamSelector, source.streamAttribute);
       if (!value) throw new Error(`No video URL matched the selector for "${source.name}".`);
       return value;
     } catch (error) {
@@ -254,30 +278,135 @@ function parseStreamFromDetail(source, detailUrl) {
   });
 }
 
+async function fetchRenderedHtml(env, inputUrl) {
+  const url = publicUrl(inputUrl, undefined, 'Source URL');
+  if (!env.BROWSER || typeof env.BROWSER.quickAction !== 'function') {
+    throw new Error('Rendered-page analysis is not enabled on this deployment. Try the regular analysis or use static HTML selectors.');
+  }
+  const result = await env.BROWSER.quickAction('content', {
+    url,
+    gotoOptions: { waitUntil: 'networkidle2' }
+  });
+  if (!result || typeof result.text !== 'function') throw new Error('The rendered page service returned an unexpected response.');
+  if (!result.ok) throw new Error(`Rendered page request returned HTTP ${result.status}.`);
+  const html = await readLimitedBody(result.body);
+  const finalUrl = publicUrl(result.url || url, url, 'Rendered page URL');
+  return { html, url: finalUrl };
+}
+
+async function analyzePage(env, body) {
+  if (!body || typeof body.pageUrl !== 'string' || !body.pageUrl.trim()) throw new Error('Enter a page URL to analyze.');
+  const rendered = body.rendered === true;
+  const page = rendered ? await fetchRenderedHtml(env, body.pageUrl.trim()) : await fetchHtml(body.pageUrl.trim());
+  const result = analyzeHtml(page.html, page.url);
+  result.rendered = rendered;
+
+  let detailPagesRemaining = 2;
+  for (const candidate of result.candidates) {
+    if (!detailPagesRemaining) break;
+    if (!candidate.suggestions.streamFromDetail) continue;
+    const origin = new URL(page.url).origin;
+    const detailUrls = [...new Set(candidate.sample.map(item => item.detailUrl).filter(Boolean))]
+      .filter(value => {
+        try { return new URL(value).origin === origin; } catch { return false; }
+      })
+      .slice(0, detailPagesRemaining);
+    let learnedMedia = false;
+    for (const detailUrl of detailUrls) {
+      detailPagesRemaining -= 1;
+      candidate.diagnostics.detailPagesTested += 1;
+      try {
+        const detail = rendered
+          ? await fetchRenderedHtml(env, detailUrl)
+          : await fetchHtml(detailUrl);
+        if (new URL(detail.url).origin !== origin) continue;
+        const media = inspectDetailMedia(detail.html, detail.url);
+        if (!media) continue;
+        candidate.diagnostics.detailPagesWithMedia += 1;
+        const sample = candidate.sample.find(item => item.detailUrl === detailUrl);
+        if (sample) sample.mediaUrl = media.url;
+        if (!learnedMedia) {
+          learnedMedia = true;
+          if (media.selector) {
+            candidate.suggestions.streamSelector = media.selector;
+            candidate.suggestions.streamAttribute = media.attribute || 'src';
+          }
+          candidate.mediaDiscovery = media.kind === 'structured' ? 'structured data' : 'video markup';
+        }
+      } catch {
+        // A sample detail page can be unavailable independently of its listing page.
+      }
+    }
+    if (learnedMedia) candidate.confidence = Math.min(0.92, Number((candidate.confidence + 0.20).toFixed(2)));
+  }
+  return result;
+}
+
 async function preview(sourceInput) {
   const singleConfig = sanitizeConfig({ version: 1, sources: [sourceInput] });
   const source = singleConfig.sources[0];
   const items = await getSourceItems(source, true);
+  const samples = items.slice(0, 5);
+  const streamResponses = [];
+  let detailChecks = 0;
+
+  for (const item of samples) {
+    if (source.streamFromDetail && detailChecks >= 3) {
+      streamResponses.push({
+        metaId: item.meta.id,
+        checked: false,
+        note: 'Detail-page stream checks are limited to three sample items.'
+      });
+      continue;
+    }
+
+    try {
+      let streamUrl = item.directStreamUrl;
+      if (source.streamFromDetail) {
+        detailChecks += 1;
+        streamUrl = await parseStreamFromDetail(source, item.detailUrl);
+      }
+      streamResponses.push({
+        metaId: item.meta.id,
+        checked: true,
+        response: {
+          streams: [{ name: source.name, title: 'Personal video', url: streamUrl }]
+        }
+      });
+    } catch (error) {
+      streamResponses.push({
+        metaId: item.meta.id,
+        checked: true,
+        response: { streams: [] },
+        error: error instanceof Error ? error.message : 'Could not resolve a playable video URL.'
+      });
+    }
+  }
+
   return {
     source: source.name,
     matches: items.length,
-    sample: items.slice(0, 5).map(item => ({
-      name: item.meta.name,
-      description: item.meta.description || '',
-      poster: item.meta.poster || '',
-      videoUrl: source.streamFromDetail ? item.detailUrl : item.directStreamUrl
-    }))
+    catalogResponse: { metas: samples.map(item => item.meta) },
+    streamResponses
   };
 }
 
 async function serveAsset(env, request, path = '/') {
-  if (!env.ASSETS) return response('Configurator asset is missing.', 500, 'text/plain; charset=utf-8', request.method);
-  const assetUrl = new URL(path, request.url);
-  const assetRequest = new Request(assetUrl, { method: 'GET', headers: request.headers });
-  const asset = await env.ASSETS.fetch(assetRequest);
-  const headers = new Headers(asset.headers);
-  headers.set('Cache-Control', 'no-store');
-  return new Response(request.method === 'HEAD' ? null : asset.body, { status: asset.status, headers });
+  const assetPath = path === '/' ? '/index.html' : path;
+  if (env.ASSETS) {
+    const assetUrl = new URL(path, request.url);
+    const assetRequest = new Request(assetUrl, { method: 'GET', headers: request.headers });
+    const asset = await env.ASSETS.fetch(assetRequest);
+    const headers = new Headers(asset.headers);
+    headers.set('Cache-Control', 'no-store');
+    return new Response(request.method === 'HEAD' ? null : asset.body, { status: asset.status, headers });
+  }
+  const body = INLINE_ASSETS[assetPath];
+  if (typeof body !== 'string') return response('Configurator asset is missing.', 500, 'text/plain; charset=utf-8', request.method);
+  const contentType = assetPath.endsWith('.js') ? 'text/javascript; charset=utf-8'
+    : assetPath.endsWith('.json') ? 'application/json; charset=utf-8'
+      : 'text/html; charset=utf-8';
+  return response(body, 200, contentType, request.method);
 }
 
 function sourceById(config, id) {
@@ -305,12 +434,26 @@ export default {
     }
     if (url.pathname === '/api/preview' && method === 'POST') {
       try {
-        const rawBody = await request.text();
-        if (new TextEncoder().encode(rawBody).byteLength > 16_000) throw new Error('Preview configuration is too large.');
+        const rawBody = await readLimitedBody(request.body, 16_000, 'Preview configuration is too large.');
         const body = JSON.parse(rawBody);
         return json(await preview(body.source), 200, method);
       } catch (error) {
         return errorJson(error, 400, method);
+      }
+    }
+    if (url.pathname === '/api/analyze' && method === 'POST') {
+      try {
+        if (!allowRequest(analysisRequests, request, 4_000)) {
+          return errorJson(new Error('Please wait a few seconds before analyzing another page.'), 429, method);
+        }
+        const rawBody = await readLimitedBody(request.body, 4_000, 'Analysis request is too large.');
+        const body = JSON.parse(rawBody);
+        if (body?.rendered === true && !allowRequest(renderedRequests, request, 60_000)) {
+          return errorJson(new Error('Rendered-page analysis is limited to one request per minute. Try again shortly.'), 429, method);
+        }
+        return json(await analyzePage(env, body), 200, method);
+      } catch (error) {
+        return errorJson(error, error instanceof SyntaxError ? 400 : 400, method);
       }
     }
     if (url.pathname === '/manifest.json') {
