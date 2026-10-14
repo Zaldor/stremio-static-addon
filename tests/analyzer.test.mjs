@@ -154,6 +154,20 @@ test('manifest exposes the configuration page inside Stremio add-on settings', a
   assert.equal(manifest.catalogs[0].name, 'Holidays');
 });
 
+test('serves the API response helper module through the static asset binding', async () => {
+  let requestedPath = '';
+  const env = { ASSETS: { fetch: async request => {
+    requestedPath = new URL(request.url).pathname;
+    return new Response('export async function readApiJson() {}', {
+      headers: { 'content-type': 'text/javascript; charset=utf-8' }
+    });
+  } } };
+  const response = await worker.fetch(new Request('https://stremio.juzemaru.com/api-response.js'), env);
+  assert.equal(response.status, 200);
+  assert.equal(requestedPath, '/api-response.js');
+  assert.match(await response.text(), /readApiJson/);
+});
+
 test('page preview returns Stremio-shaped metadata and resolved direct streams', async t => {
   const html = `<article class="video-card"><h2 class="title">Family holiday</h2>
     <p class="description">A week by the sea</p><img class="poster" src="/poster.jpg">

@@ -430,6 +430,9 @@ export default {
     if (url.pathname === '/config.js') {
       return serveAsset(env, request, '/config.js');
     }
+    if (url.pathname === '/api-response.js') {
+      return serveAsset(env, request, '/api-response.js');
+    }
     if (url.pathname === '/config-template.json') {
       return serveAsset(env, request, '/config-template.json');
     }
