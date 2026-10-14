@@ -186,6 +186,27 @@ test('page preview returns Stremio-shaped metadata and resolved direct streams',
   });
 });
 
+test('page preview accepts source pages larger than the legacy 1.5 MB limit', async t => {
+  const card = '<article class="video-card"><h2 class="title">A large-page memory</h2><video><source src="/media/memory.mp4"></video></article>';
+  const html = `<main>${card}</main><!--${'large page padding '.repeat(90_000)}-->`;
+  assert.ok(new TextEncoder().encode(html).byteLength > 1_500_000);
+  t.mock.method(globalThis, 'fetch', async () => new Response(html, { status: 200, headers: { 'content-type': 'text/html' } }));
+
+  const response = await worker.fetch(new Request('https://stremio.juzemaru.com/api/preview', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ source: {
+      id: 'large-page', name: 'Large page', pageUrl: 'https://memories.example/videos/',
+      itemSelector: '.video-card', titleSelector: '.title', titleAttribute: 'text',
+      streamSelector: 'video source', streamAttribute: 'src', streamFromDetail: false
+    } })
+  }), {});
+  assert.equal(response.status, 200);
+  const output = await response.json();
+  assert.equal(output.matches, 1);
+  assert.equal(output.catalogResponse.metas[0].name, 'A large-page memory');
+});
+
 test('page preview checks configured selectors on detail pages', async t => {
   const pages = new Map([
     ['https://memories.example/videos/', '<article class="video-card"><a class="watch" href="/watch/one"><h2 class="title">Birthday</h2></a></article>'],

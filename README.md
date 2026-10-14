@@ -22,7 +22,7 @@ The analyzer looks for repeated sibling structures, proposes selectors for the i
 
 Select **Render JavaScript page** when the website adds its cards after the initial HTML arrives. Cloudflare Browser Run loads the page in a headless browser to capture rendered markup and can render up to two same-origin detail pages for media discovery, so one analysis can render up to three pages. The Worker throttles rapid repeat requests where possible, and Cloudflare account usage limits still apply. Static mode does not execute page scripts; rendered mode lets the browser execute them to display the page. Neither mode signs into sites or bypasses access controls. Review each suggested pattern and choose **Apply this pattern** before testing or installing it; suggestions never replace your selectors automatically.
 
-The page and media must be publicly reachable over HTTPS. A selector must identify a direct URL that Stremio can play; a page containing an embedded player is not necessarily a playable stream. The generated manifest URL contains the source URLs and selectors, so treat it as private if those details should not be shared. This version does not sign in to websites or handle protected pages.
+The page and media must be publicly reachable over HTTPS. A selector must identify a direct URL that Stremio can play; a page containing an embedded player is not necessarily a playable stream. Source pages up to 8 MB are supported. The generated manifest URL contains the source URLs and selectors, so treat it as private if those details should not be shared. This version does not sign in to websites or handle protected pages.
 
 ## Test and configure in Stremio
 
@@ -53,4 +53,4 @@ The Worker and configurator are served together. GitHub Pages is no longer used 
 
 ## Privacy and limits
 
-The configurator stores a draft in your browser's local storage, not on the server. The final config is encoded in the Stremio install URL. Anyone with that URL can read the configured catalogs, so do not put private pages or video URLs in a shared configuration. The scraper accepts only public HTTPS hostnames, limits source HTML to 1.5 MB, follows a limited number of safe redirects, and reads at most 100 video cards per page.
+The configurator stores a draft in your browser's local storage, not on the server. The final config is encoded in the Stremio install URL. Anyone with that URL can read the configured catalogs, so do not put private pages or video URLs in a shared configuration. The scraper accepts only public HTTPS hostnames, limits source HTML to 8 MB, follows a limited number of safe redirects, and reads at most 100 video cards per page.

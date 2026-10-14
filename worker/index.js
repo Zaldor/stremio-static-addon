@@ -3,7 +3,8 @@ import { assertPublicHttps, decodeBase64Url, decodeConfig, encodeBase64Url, sani
 import { analyzeHtml, extractMediaUrl, inspectDetailMedia } from './analyzer.js';
 import INLINE_ASSETS from './inline-assets.js';
 
-const MAX_HTML_BYTES = 1_500_000;
+const MAX_HTML_BYTES = 8_000_000;
+const HTML_TOO_LARGE_MESSAGE = 'The source page exceeds the 8 MB processing limit. Try a lighter listing page with fewer embedded scripts or videos.';
 const MAX_ITEMS = 100;
 const PAGE_CACHE_MS = 30_000;
 const pageCache = new Map();
@@ -42,7 +43,7 @@ function publicUrl(value, base, label) {
   return assertPublicHttps(url.href, label).href;
 }
 
-async function readLimitedBody(responseBody, limit = MAX_HTML_BYTES, tooLargeMessage = 'The source page is larger than 1.5 MB.') {
+async function readLimitedBody(responseBody, limit = MAX_HTML_BYTES, tooLargeMessage = HTML_TOO_LARGE_MESSAGE) {
   if (!responseBody) return '';
   const reader = responseBody.getReader();
   const chunks = [];
@@ -86,7 +87,7 @@ async function fetchHtml(inputUrl) {
       }
       if (!result.ok) throw new Error(`The source returned HTTP ${result.status}.`);
       const declaredLength = Number(result.headers.get('Content-Length') || 0);
-      if (declaredLength > MAX_HTML_BYTES) throw new Error('The source page is larger than 1.5 MB.');
+      if (declaredLength > MAX_HTML_BYTES) throw new Error(HTML_TOO_LARGE_MESSAGE);
       const html = await readLimitedBody(result.body);
       return { html, url };
     }
