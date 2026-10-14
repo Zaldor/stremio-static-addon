@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from 'cheerio';
 import { analyzeHtml, extractMediaUrl, inspectDetailMedia } from '../worker/analyzer.js';
+import { mapGeminiSuggestions, redactHtmlForGemini } from '../worker/gemini.js';
 import { encodeConfig } from '../worker/config.js';
 import worker from '../worker/index.js';
 
@@ -246,4 +247,64 @@ test('page preview checks configured selectors on detail pages', async t => {
   assert.equal(output.catalogResponse.metas[0].name, 'Birthday');
   assert.equal(output.streamResponses[0].checked, true);
   assert.equal(output.streamResponses[0].response.streams[0].url, 'https://memories.example/media/birthday.mp4');
+});
+
+test('Gemini redaction removes page URLs, original identifiers and page text before model use', () => {
+  const html = `<main class="private-holiday-grid" id="alice-family"><article class="private-video-card"><a class="secret-watch" href="https://private.example/2026/family-party?token=secret"><h2 class="private-title">Alice's 40th birthday</h2></a><video><source src="https://media.private.example/alice-family.mp4"></video></article></main>`;
+  const redacted = redactHtmlForGemini(html);
+  for (const secret of ['private.example', 'family-party', 'token=secret', 'alice-family', 'private-holiday-grid', 'secret-watch', 'Alice', 'birthday']) {
+    assert.equal(redacted.markup.includes(secret), false, `redacted markup leaked ${secret}`);
+  }
+  assert.match(redacted.markup, /__URL_1__/);
+  assert.equal(redacted.urlValues.get('__URL_1__'), 'https://private.example/2026/family-party?token=secret');
+  assert.equal(redacted.urlValues.get('__URL_2__'), 'https://media.private.example/alice-family.mp4');
+  const suggestions = mapGeminiSuggestions({
+    itemSelector: 'main.c1 > article.c2', titleSelector: 'h2.c4', descriptionSelector: '',
+    posterSelector: '', detailLinkSelector: 'a.c3', streamSelector: 'video > source',
+    titleAttribute: 'text', descriptionAttribute: 'text', posterAttribute: 'src',
+    detailLinkAttribute: 'href', streamAttribute: 'src', streamFromDetail: false
+  }, redacted);
+  assert.equal(suggestions.itemSelector, 'main.private-holiday-grid > article.private-video-card');
+  assert.equal(suggestions.titleSelector, 'h2.private-title');
+});
+
+test('Gemini analysis sends only redacted structure and validates mapped selectors on the original page', async t => {
+  const pageUrl = 'https://private.example/holidays/?private=alice';
+  const html = `<html><head><title>Alice private family memories</title></head><body><main class="private-grid"><article class="private-card"><a class="private-link" href="https://private.example/watch/a?token=one"><h2 class="private-title">Alice birthday</h2></a><video><source src="https://media.private.example/a-family.mp4"></video></article><article class="private-card"><a class="private-link" href="https://private.example/watch/b?token=two"><h2 class="private-title">Family holiday</h2></a><video><source src="https://media.private.example/b-family.mp4"></video></article></main></body></html>`;
+  const calls = [];
+  const key = 'test-gemini-api-key-that-must-not-leak';
+  t.mock.method(globalThis, 'fetch', async (input, init = {}) => {
+    const url = String(input);
+    calls.push({ url, init });
+    if (url === pageUrl) return new Response(html, { status: 200, headers: { 'content-type': 'text/html' } });
+    if (url.includes('generativelanguage.googleapis.com')) {
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({
+        itemSelector: 'main.c1 > article.c2', titleSelector: 'h2.c4', titleAttribute: 'text',
+        descriptionSelector: '', descriptionAttribute: 'text', posterSelector: '', posterAttribute: 'src',
+        detailLinkSelector: 'a.c3', detailLinkAttribute: 'href', streamSelector: 'video > source',
+        streamAttribute: 'src', streamFromDetail: false
+      }) }] } }] });
+    }
+    return new Response('not found', { status: 404 });
+  });
+  const response = await worker.fetch(new Request('https://stremio.juzemaru.com/api/gemini-analyze', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'cf-connecting-ip': '192.0.2.90' },
+    body: JSON.stringify({ pageUrl, rendered: false, apiKey: key })
+  }), {});
+  assert.equal(response.status, 200);
+  const output = await response.json();
+  assert.equal(output.geminiModel, 'gemini-3.8-flash');
+  assert.equal(output.candidates[0].suggestions.itemSelector, 'main.private-grid > article.private-card');
+  assert.deepEqual(output.candidates[0].sample.map(item => item.title), ['Alice birthday', 'Family holiday']);
+  assert.equal(output.candidates[0].diagnostics.directMedia, 2);
+  const geminiCall = calls.find(call => call.url.includes('generativelanguage.googleapis.com'));
+  assert.ok(geminiCall);
+  assert.equal(new Headers(geminiCall.init.headers).get('x-goog-api-key'), key);
+  const prompt = JSON.parse(geminiCall.init.body).contents[0].parts[0].text;
+  for (const secret of [pageUrl, 'private.example', 'media.private.example', 'token=one', 'Alice birthday', 'private-grid', 'private-card']) {
+    assert.equal(prompt.includes(secret), false, `Gemini prompt leaked ${secret}`);
+  }
+  assert.match(prompt, /__URL_1__/);
+  assert.equal(JSON.stringify(output).includes(key), false);
 });

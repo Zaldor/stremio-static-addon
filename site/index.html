@@ -35,6 +35,15 @@
       <div id="form-error" class="preview show" role="alert" style="display:none"></div>
     </form>
 
+    <details class="config-io" id="gemini-options">
+      <summary>Optional Gemini Flash selector helper</summary>
+      <div class="config-io-body">
+        <label class="label" for="gemini-api-key">Gemini API key</label>
+        <input id="gemini-api-key" type="password" autocomplete="new-password" spellcheck="false" placeholder="Paste your Gemini API key" aria-describedby="gemini-privacy-note">
+        <p id="gemini-privacy-note" style="margin:10px 0 0">The key stays in this tab and is used only when you choose Gemini assist. JuzeReel forwards it to Gemini for that request and does not save it. Gemini receives a compact page structure with URLs, text, original classes and IDs replaced by placeholders; returned selectors are mapped and checked against the source page locally. The page URL is used by JuzeReel to fetch your page and is not included in the Gemini prompt.</p>
+      </div>
+    </details>
+
     <details class="config-io" id="config-io">
       <summary>Load or save this setup as JSON</summary>
       <div class="config-io-body">
@@ -94,7 +103,7 @@
         <div class="field" style="margin-top:17px">
           <div class="label">Additional Stremio metadata</div>
           <div class="meta-fields" data-meta-fields></div>
-          <div class="controls"><button type="button" class="button secondary small" data-action="add-meta">＋ Add metadata field</button><button type="button" class="button secondary small" data-action="analyze">Analyze &amp; learn</button><button type="button" class="button secondary small" data-action="test">Test &amp; preview output</button><label class="analysis-options"><input type="checkbox" data-rendered><span>Render JavaScript page (uses Browser Run)</span></label></div>
+          <div class="controls"><button type="button" class="button secondary small" data-action="add-meta">＋ Add metadata field</button><button type="button" class="button secondary small" data-action="analyze">Analyze &amp; learn</button><button type="button" class="button secondary small" data-action="gemini">Gemini assist</button><button type="button" class="button secondary small" data-action="test">Test &amp; preview output</button><label class="analysis-options"><input type="checkbox" data-rendered><span>Render JavaScript page (uses Browser Run)</span></label></div>
           <div class="preview" data-preview aria-live="polite"></div>
           <div class="hint">Analyze checks repeated cards and validates suggestions on samples. It can inspect up to two same-origin detail pages for media. Test &amp; preview shows the Stremio metadata response and checks up to three detail-page streams. Render JavaScript page when the source is assembled in the browser; that can render up to three pages and takes longer.</div>
           <div class="hint">Optional fields include releaseInfo, runtime, genres, cast, director, language, country, awards, website, background, logo and certification.</div>
@@ -164,6 +173,7 @@
       });
       card.querySelector('[data-action="test"]').addEventListener('click', () => testSource(card));
       card.querySelector('[data-action="analyze"]').addEventListener('click', () => analyzeSource(card));
+      card.querySelector('[data-action="gemini"]').addEventListener('click', () => analyzeGeminiSource(card));
       card.querySelector('[data-preview]').addEventListener('click', event => {
         const button = event.target.closest('[data-apply-candidate]');
         if (!button || !card._analysis) return;
@@ -346,7 +356,7 @@
     function renderAnalysis(card, data) {
       const preview = card.querySelector('[data-preview]');
       card._analysis = data;
-      const mode = data.rendered ? 'Rendered page' : 'Page';
+      const mode = data.geminiModel ? `Gemini-assisted (${data.geminiModel})` : data.rendered ? 'Rendered page' : 'Page';
       if (!data.candidates?.length) {
         preview.innerHTML = `<span class="analysis-empty">${escapeHtml(mode)} analyzed, but no repeatable video pattern was found.</span>${(data.notes || []).map(note => `<p>${escapeHtml(note)}</p>`).join('')}<p>Try rendering the page if its content is added by JavaScript, or enter selectors manually.</p>`;
         return;
@@ -363,7 +373,7 @@
               : 'media URL pattern found';
         return `<article class="candidate"><div class="candidate-head"><strong>Pattern ${index + 1}</strong><span>${Math.round(candidate.confidence * 100)}% confidence</span></div><p><code>${escapeHtml(candidate.suggestions.itemSelector)}</code> · ${d.matchedCards} repeated items · ${media}</p><div class="candidate-foot">Fields validated on ${d.sampledCards} samples: titles ${d.titleMatches}/${d.sampledCards}, posters ${d.posters}/${d.sampledCards}, links ${d.detailLinks}/${d.sampledCards}.${d.detailPagesTested ? ` Detail pages checked: ${d.detailPagesTested}.` : ''}</div>${titleSamples.length ? `<div class="candidate-samples">${titleSamples.map(title => `<span>• ${escapeHtml(title)}</span>`).join('')}</div>` : ''}<button type="button" class="button secondary small" data-apply-candidate="${index}">Apply this pattern</button></article>`;
       }).join('');
-      preview.innerHTML = `<span class="ok">${escapeHtml(mode)} analyzed.</span> Review the inferred fields, then apply the pattern you want.${patterns}`;
+      preview.innerHTML = `<span class="ok">${escapeHtml(mode)} analyzed.</span> Review the inferred fields, then apply the pattern you want.${data.privacy ? `<p>${escapeHtml(data.privacy)}</p>` : ''}${patterns}`;
     }
     async function analyzeSource(card) {
       const preview = card.querySelector('[data-preview]');
@@ -376,6 +386,31 @@
       try {
         const response = await fetch('/api/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pageUrl, rendered:card.querySelector('[data-rendered]').checked}) });
         const data = await readApiJson(response, 'Page analysis');
+        renderAnalysis(card, data);
+      } catch (error) { preview.innerHTML = `<span class="error">${escapeHtml(error.message)}</span>`; }
+      finally { button.disabled = false; }
+    }
+    async function analyzeGeminiSource(card) {
+      const preview = card.querySelector('[data-preview]');
+      const button = card.querySelector('[data-action="gemini"]');
+      const pageUrl = card.querySelector('[data-field="pageUrl"]').value.trim();
+      const apiKey = document.getElementById('gemini-api-key').value.trim();
+      if (!pageUrl) { preview.classList.add('show'); preview.innerHTML = '<span class="error">Enter a page URL first.</span>'; return; }
+      if (!apiKey) {
+        document.getElementById('gemini-options').open = true;
+        preview.classList.add('show'); preview.innerHTML = '<span class="error">Enter your Gemini API key in the optional Gemini helper above.</span>';
+        document.getElementById('gemini-api-key').focus();
+        return;
+      }
+      card._analysis = null;
+      preview.classList.add('show'); preview.innerHTML = 'Redacting the page structure and asking Gemini for selectors…';
+      button.disabled = true;
+      try {
+        const response = await fetch('/api/gemini-analyze', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({pageUrl, rendered:card.querySelector('[data-rendered]').checked, apiKey})
+        });
+        const data = await readApiJson(response, 'Gemini analysis');
         renderAnalysis(card, data);
       } catch (error) { preview.innerHTML = `<span class="error">${escapeHtml(error.message)}</span>`; }
       finally { button.disabled = false; }

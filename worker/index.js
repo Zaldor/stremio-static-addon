@@ -1,6 +1,7 @@
 import { load as loadHtml } from 'cheerio';
 import { assertPublicHttps, decodeBase64Url, decodeConfig, encodeBase64Url, sanitizeConfig } from './config.js';
 import { analyzeHtml, extractMediaUrl, inspectDetailMedia } from './analyzer.js';
+import { askGeminiForSelectors, mapGeminiSuggestions, redactHtmlForGemini } from './gemini.js';
 import INLINE_ASSETS from './inline-assets.js';
 
 const MAX_HTML_BYTES = 8_000_000;
@@ -10,6 +11,7 @@ const PAGE_CACHE_MS = 30_000;
 const pageCache = new Map();
 const analysisRequests = new Map();
 const renderedRequests = new Map();
+const geminiRequests = new Map();
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -343,6 +345,111 @@ async function analyzePage(env, body) {
   return result;
 }
 
+function analyzeGeminiCandidate(html, pageUrl, suggestions) {
+  const $ = loadHtml(html);
+  for (const selector of Object.values(suggestions).filter(value => typeof value === 'string' && value)) {
+    try { $.root().find(selector); }
+    catch { throw new Error('Gemini returned invalid CSS selector syntax. Review the suggestions or try the regular analyzer.'); }
+  }
+  let cards;
+  try { cards = $(suggestions.itemSelector).toArray().slice(0, 100); }
+  catch { throw new Error('Gemini returned invalid CSS selector syntax. Review the suggestions or try the regular analyzer.'); }
+  if (!cards.length) throw new Error('Gemini selectors did not match any video items on the original page. Review them or try the regular analyzer.');
+  const samples = cards.slice(0, 5).map(card => {
+    const scope = $(card);
+    const title = readField(scope, suggestions.titleSelector, suggestions.titleAttribute, pageUrl);
+    const description = readField(scope, suggestions.descriptionSelector, suggestions.descriptionAttribute, pageUrl);
+    const rawPoster = readField(scope, suggestions.posterSelector, suggestions.posterAttribute, pageUrl);
+    let posterUrl = '';
+    try { if (rawPoster) posterUrl = publicUrl(rawPoster, pageUrl, 'Poster URL'); } catch {}
+    let detailUrl = '';
+    try { if (suggestions.detailLinkSelector) detailUrl = readField(scope, suggestions.detailLinkSelector, suggestions.detailLinkAttribute, pageUrl, true); } catch {}
+    let mediaUrl = '';
+    if (!suggestions.streamFromDetail) {
+      try { mediaUrl = extractMediaUrl($, card, pageUrl, suggestions.streamSelector, suggestions.streamAttribute); } catch {}
+    }
+    return { title, description, posterUrl, detailUrl, mediaUrl };
+  });
+  const titleMatches = samples.filter(item => item.title).length;
+  if (!titleMatches) throw new Error('Gemini selectors matched items but found no titles on the original page. Review them or try the regular analyzer.');
+  const detailLinks = samples.filter(item => item.detailUrl).length;
+  const directMedia = samples.filter(item => item.mediaUrl).length;
+  const streamFromDetail = Boolean(suggestions.detailLinkSelector && detailLinks >= Math.ceil(samples.length * 0.5) &&
+    (suggestions.streamFromDetail || directMedia < Math.ceil(samples.length * 0.5)));
+  if (streamFromDetail) suggestions.streamFromDetail = true;
+  else suggestions.streamFromDetail = false;
+  if (!directMedia && !suggestions.streamFromDetail) throw new Error('The suggested selectors found no video URL or detail page link in the original page. Review them or try the regular analyzer.');
+  const confidence = Math.min(0.95, 0.45 + 0.25 * titleMatches / samples.length +
+    0.2 * Math.max(directMedia, detailLinks) / samples.length +
+    0.1 * Math.min(cards.length, 10) / 10);
+  return {
+    confidence: Number(confidence.toFixed(2)),
+    suggestions,
+    diagnostics: {
+      matchedCards: cards.length,
+      sampledCards: samples.length,
+      titleMatches,
+      detailLinks,
+      posters: samples.filter(item => item.posterUrl).length,
+      descriptions: samples.filter(item => item.description).length,
+      directMedia,
+      semanticHint: true,
+      detailPagesTested: 0,
+      detailPagesWithMedia: 0
+    },
+    sample: samples.map(({ title, detailUrl, posterUrl, mediaUrl }) => ({ title, detailUrl, posterUrl, mediaUrl }))
+  };
+}
+
+async function analyzeWithGemini(env, body) {
+  if (!body || typeof body.pageUrl !== 'string' || !body.pageUrl.trim()) throw new Error('Enter a page URL to analyze.');
+  if (typeof body.apiKey !== 'string' || body.apiKey.trim().length < 20 || body.apiKey.trim().length > 512) {
+    throw new Error('Enter a valid Gemini API key. The key is used for this request and is not saved.');
+  }
+  const rendered = body.rendered === true;
+  const page = rendered ? await fetchRenderedHtml(env, body.pageUrl.trim()) : await fetchHtml(body.pageUrl.trim());
+  const redacted = redactHtmlForGemini(page.html);
+  const rawSuggestions = await askGeminiForSelectors(body.apiKey.trim(), redacted.markup);
+  const suggestions = mapGeminiSuggestions(rawSuggestions, redacted);
+  const candidate = analyzeGeminiCandidate(page.html, page.url, suggestions);
+
+  if (candidate.suggestions.streamFromDetail) {
+    const origin = new URL(page.url).origin;
+    const detailUrls = [...new Set(candidate.sample.map(item => item.detailUrl).filter(Boolean))]
+      .filter(value => { try { return new URL(value).origin === origin; } catch { return false; } })
+      .slice(0, 2);
+    let learnedMedia = false;
+    for (const detailUrl of detailUrls) {
+      candidate.diagnostics.detailPagesTested += 1;
+      try {
+        const detail = rendered ? await fetchRenderedHtml(env, detailUrl) : await fetchHtml(detailUrl);
+        if (new URL(detail.url).origin !== origin) continue;
+        const media = inspectDetailMedia(detail.html, detail.url);
+        if (!media) continue;
+        candidate.diagnostics.detailPagesWithMedia += 1;
+        const sample = candidate.sample.find(item => item.detailUrl === detailUrl);
+        if (sample) sample.mediaUrl = media.url;
+        if (!learnedMedia && media.selector) {
+          learnedMedia = true;
+          candidate.suggestions.streamSelector = media.selector;
+          candidate.suggestions.streamAttribute = media.attribute || 'src';
+        }
+      } catch {
+        // A sampled detail page can fail independently of the listing page.
+      }
+    }
+    if (learnedMedia) candidate.confidence = Math.min(0.98, Number((candidate.confidence + 0.12).toFixed(2)));
+  }
+  return {
+    pageTitle: loadHtml(page.html)('title').first().text().replace(/\s+/g, ' ').trim().slice(0, 180),
+    rendered,
+    geminiModel: redacted.model,
+    privacy: 'Gemini received only a redacted structural sketch. Page URLs, host names, text, original classes and IDs were withheld; selectors were mapped and checked locally.',
+    candidates: [candidate],
+    notes: ['Gemini suggestions were checked against the original page. Review the samples before applying them.']
+  };
+}
+
 async function preview(sourceInput) {
   const singleConfig = sanitizeConfig({ version: 1, sources: [sourceInput] });
   const source = singleConfig.sources[0];
@@ -456,6 +563,21 @@ export default {
           return errorJson(new Error('Rendered-page analysis is limited to one request per minute. Try again shortly.'), 429, method);
         }
         return json(await analyzePage(env, body), 200, method);
+      } catch (error) {
+        return errorJson(error, error instanceof SyntaxError ? 400 : 400, method);
+      }
+    }
+    if (url.pathname === '/api/gemini-analyze' && method === 'POST') {
+      try {
+        if (!allowRequest(geminiRequests, request, 15_000)) {
+          return errorJson(new Error('Please wait 15 seconds before starting another Gemini analysis.'), 429, method);
+        }
+        const rawBody = await readLimitedBody(request.body, 8_000, 'Gemini analysis request is too large.');
+        const body = JSON.parse(rawBody);
+        if (body?.rendered === true && !allowRequest(renderedRequests, request, 60_000)) {
+          return errorJson(new Error('Rendered-page analysis is limited to one request per minute. Try again shortly.'), 429, method);
+        }
+        return json(await analyzeWithGemini(env, body), 200, method);
       } catch (error) {
         return errorJson(error, error instanceof SyntaxError ? 400 : 400, method);
       }

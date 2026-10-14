@@ -24,6 +24,12 @@ Select **Render JavaScript page** when the website adds its cards after the init
 
 The page and media must be publicly reachable over HTTPS. A selector must identify a direct URL that Stremio can play; a page containing an embedded player is not necessarily a playable stream. Source pages up to 8 MB are supported. The generated manifest URL contains the source URLs and selectors, so treat it as private if those details should not be shared. This version does not sign in to websites or handle protected pages.
 
+### Optional Gemini Flash assist
+
+Open **Optional Gemini Flash selector helper**, enter your own Gemini API key, and choose **Gemini assist** on a source. The key is held in the current tab, sent to the JuzeReel Worker for that request, and forwarded to Google's Gemini API; JuzeReel does not save it or add it to the configuration, JSON export, or Stremio install URL. Clear the field or close the tab to remove it from the page.
+
+Before the request, JuzeReel removes page text, scripts, styles, and comments; replaces class and ID values with aliases; and replaces URL values with opaque placeholders. Gemini receives the remaining HTML structure and attribute names, not the page URL or original hosts, paths, text, classes, IDs, or media URLs. The Worker maps the suggested aliases back and checks the selectors against the original page. The real values are read locally for the preview. Gemini assistance is optional; the regular **Analyze & learn** path works without a key.
+
 ## Test and configure in Stremio
 
 Use **Test & preview output** on each page before installing. It shows the first five catalog metadata objects in Stremio's `metas` response, checks direct stream URLs, and tries the configured selector on up to three detail pages. Expand **View raw Stremio output JSON** to copy the exact catalog and stream response shapes for troubleshooting.
@@ -40,7 +46,7 @@ npm run check
 npm run dev
 ```
 
-Open `http://localhost:8787/` to configure sources. Use **Analyze & learn** to get selector suggestions, then use **Test this page** before creating the Stremio install link. Cloudflare Browser Run Quick Actions require remote mode during local development; run `npx wrangler dev --remote` to test rendered-page analysis locally.
+Open `http://localhost:8787/` to configure sources. Use **Analyze & learn** to get selector suggestions, then use **Test & preview output** before creating the Stremio install link. Cloudflare Browser Run Quick Actions require remote mode during local development; run `npx wrangler dev --remote` to test rendered-page analysis locally.
 
 ## Deploy to Cloudflare Workers
 
@@ -54,3 +60,5 @@ The Worker and configurator are served together. GitHub Pages is no longer used 
 ## Privacy and limits
 
 The configurator stores a draft in your browser's local storage, not on the server. The final config is encoded in the Stremio install URL. Anyone with that URL can read the configured catalogs, so do not put private pages or video URLs in a shared configuration. The scraper accepts only public HTTPS hostnames, limits source HTML to 8 MB, follows a limited number of safe redirects, and reads at most 100 video cards per page.
+
+The Gemini key is excluded from browser local storage and configuration exports. Gemini analysis sends only the redacted structural sketch described above; the source URL and original page content stay in the local Worker analysis path. Google still processes the redacted request under the account and API terms associated with the key.
