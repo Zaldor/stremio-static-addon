@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from 'cheerio';
 import { analyzeHtml, extractMediaUrl, inspectDetailMedia } from '../worker/analyzer.js';
-import { mapGeminiSuggestions, redactHtmlForGemini } from '../worker/gemini.js';
+import { askGeminiForSelectors, mapGeminiSuggestions, redactHtmlForGemini } from '../worker/gemini.js';
 import { encodeConfig } from '../worker/config.js';
 import worker from '../worker/index.js';
 
@@ -353,4 +353,20 @@ test('Gemini falls back to low-latency Flash-Lite when the latest Flash model re
   assert.match(modelCalls[0].url, /gemini-3\.8-flash:generateContent$/);
   assert.match(modelCalls[1].url, /gemini-3\.5-flash-lite:generateContent$/);
   assert.equal(JSON.parse(modelCalls[1].init.body).generationConfig.thinkingConfig.thinkingLevel, 'minimal');
+});
+
+test('Gemini falls back to Flash-Lite when the latest Flash request times out', async t => {
+  const modelCalls = [];
+  t.mock.method(globalThis, 'fetch', async (input, init = {}) => {
+    const url = String(input);
+    modelCalls.push({ url, init });
+    if (url.includes('/gemini-3.8-flash:')) throw Object.assign(new Error('request timed out'), { name: 'TimeoutError' });
+    return Response.json({ candidates: [{ content: { parts: [{ text: '{"itemSelector":"body","titleSelector":"h1","streamSelector":"video source"}' }] } }] });
+  });
+  const result = await askGeminiForSelectors('test-gemini-api-key-for-timeout', '<html><body><h1>[TEXT]</h1><video><source src="__URL_1__"></video></body></html>');
+  assert.equal(result.model, 'gemini-3.5-flash-lite');
+  assert.equal(result.selectors.itemSelector, 'body');
+  assert.equal(modelCalls.length, 2);
+  assert.match(modelCalls[0].url, /gemini-3\.8-flash:generateContent$/);
+  assert.match(modelCalls[1].url, /gemini-3\.5-flash-lite:generateContent$/);
 });
