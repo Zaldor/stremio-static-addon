@@ -320,3 +320,37 @@ test('Gemini analysis sends only redacted structure and validates mapped selecto
   assert.match(prompt, /__URL_1__/);
   assert.equal(JSON.stringify(output).includes(key), false);
 });
+
+test('Gemini falls back to low-latency Flash-Lite when the latest Flash model returns a temporary error', async t => {
+  const pageUrl = 'https://private.example/fallback-test/';
+  const html = `<html><body><main class="private-grid"><article class="private-card"><a class="private-link" href="https://private.example/watch/a"><h2 class="private-title">Private title</h2></a><video><source src="https://media.private.example/a.mp4"></video></article></main></body></html>`;
+  const modelCalls = [];
+  t.mock.method(globalThis, 'fetch', async (input, init = {}) => {
+    const url = String(input);
+    if (url === pageUrl) return new Response(html, { status: 200, headers: { 'content-type': 'text/html' } });
+    modelCalls.push({ url, init });
+    if (url.includes('/gemini-3.8-flash:')) return new Response('temporarily unavailable', { status: 503 });
+    if (url.includes('/gemini-3.5-flash-lite:')) {
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({
+        itemSelector: 'main.c1 > article.c2', titleSelector: 'h2.c4', titleAttribute: 'text',
+        descriptionSelector: '', descriptionAttribute: 'text', posterSelector: '', posterAttribute: 'src',
+        detailLinkSelector: 'a.c3', detailLinkAttribute: 'href', streamSelector: 'video > source',
+        streamAttribute: 'src', streamFromDetail: false
+      }) }] } }] });
+    }
+    return new Response('not found', { status: 404 });
+  });
+  const response = await worker.fetch(new Request('https://stremio.juzemaru.com/api/gemini-analyze', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'cf-connecting-ip': '192.0.2.91' },
+    body: JSON.stringify({ pageUrl, rendered: false, apiKey: 'test-gemini-api-key-for-fallback' })
+  }), {});
+  assert.equal(response.status, 200);
+  const output = await response.json();
+  assert.equal(output.geminiModel, 'gemini-3.5-flash-lite');
+  assert.equal(output.candidates[0].suggestions.titleSelector, 'h2.private-title');
+  assert.equal(modelCalls.length, 2);
+  assert.match(modelCalls[0].url, /gemini-3\.8-flash:generateContent$/);
+  assert.match(modelCalls[1].url, /gemini-3\.5-flash-lite:generateContent$/);
+  assert.equal(JSON.parse(modelCalls[1].init.body).generationConfig.thinkingConfig.thinkingLevel, 'minimal');
+});

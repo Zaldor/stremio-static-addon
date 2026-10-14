@@ -40,7 +40,7 @@
       <div class="config-io-body">
         <label class="label" for="gemini-api-key">Gemini API key</label>
         <input id="gemini-api-key" type="password" autocomplete="new-password" spellcheck="false" placeholder="Paste your Gemini API key" aria-describedby="gemini-privacy-note">
-        <p id="gemini-privacy-note" style="margin:10px 0 0">The key stays in this tab and is used only when you choose Gemini assist. JuzeReel forwards it to Gemini for that request and does not save it. Gemini receives a compact page structure with URLs, text, original classes and IDs replaced by placeholders; returned selectors are mapped and checked against the source page locally. The page URL is used by JuzeReel to fetch your page and is not included in the Gemini prompt.</p>
+        <p id="gemini-privacy-note" style="margin:10px 0 0">The key stays in this tab and is used only when you choose Gemini assist. JuzeReel forwards it to Gemini for that request and does not save it. Gemini receives a compact page structure with URLs, text, original classes and IDs replaced by placeholders; returned selectors are mapped and checked against the source page locally. Gemini 3.8 Flash is tried first; on a timeout or temporary server error the helper falls back to the low-latency Gemini Flash-Lite model. The page URL is used by JuzeReel to fetch your page and is not included in the Gemini prompt.</p>
       </div>
     </details>
 

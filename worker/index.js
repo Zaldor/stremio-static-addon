@@ -409,8 +409,8 @@ async function analyzeWithGemini(env, body) {
   const rendered = body.rendered === true;
   const page = rendered ? await fetchRenderedHtml(env, body.pageUrl.trim()) : await fetchHtml(body.pageUrl.trim());
   const redacted = redactHtmlForGemini(page.html);
-  const rawSuggestions = await askGeminiForSelectors(body.apiKey.trim(), redacted.markup);
-  const suggestions = mapGeminiSuggestions(rawSuggestions, redacted);
+  const geminiResult = await askGeminiForSelectors(body.apiKey.trim(), redacted.markup);
+  const suggestions = mapGeminiSuggestions(geminiResult.selectors, redacted);
   const candidate = analyzeGeminiCandidate(page.html, page.url, suggestions);
 
   if (candidate.suggestions.streamFromDetail) {
@@ -443,7 +443,7 @@ async function analyzeWithGemini(env, body) {
   return {
     pageTitle: loadHtml(page.html)('title').first().text().replace(/\s+/g, ' ').trim().slice(0, 180),
     rendered,
-    geminiModel: redacted.model,
+    geminiModel: geminiResult.model,
     privacy: 'Gemini received only a redacted structural sketch. Page URLs, host names, text, original classes and IDs were withheld; selectors were mapped and checked locally.',
     candidates: [candidate],
     notes: ['Gemini suggestions were checked against the original page. Review the samples before applying them.']
