@@ -105,6 +105,7 @@
 
   <script type="module">
     import { sanitizeConfig } from '/config.js';
+    import { readApiJson } from '/api-response.js';
 
     const META_KEYS = ['releaseInfo','runtime','genres','cast','director','language','country','awards','website','background','logo','certification','imdbRating'];
     const fields = ['name','pageUrl','itemSelector','titleSelector','titleAttribute','descriptionSelector','descriptionAttribute','posterSelector','posterAttribute','detailLinkSelector','detailLinkAttribute','streamSelector','streamAttribute','streamFromDetail'];
@@ -241,8 +242,7 @@
       button.disabled = true;
       try {
         const response = await fetch('/api/preview', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({source:collectSource(card, [...sourcesEl.children].indexOf(card))}) });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Could not read that page.');
+        const data = await readApiJson(response, 'Test & preview');
         card._previewOutput = data;
         const metas = data.catalogResponse?.metas || [];
         const streams = new Map((data.streamResponses || []).map(item => [item.metaId, item]));
@@ -375,8 +375,7 @@
       button.disabled = true;
       try {
         const response = await fetch('/api/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pageUrl, rendered:card.querySelector('[data-rendered]').checked}) });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Could not analyze that page.');
+        const data = await readApiJson(response, 'Page analysis');
         renderAnalysis(card, data);
       } catch (error) { preview.innerHTML = `<span class="error">${escapeHtml(error.message)}</span>`; }
       finally { button.disabled = false; }
