@@ -268,6 +268,16 @@ test('Gemini redaction removes page URLs, original identifiers and page text bef
   assert.equal(suggestions.titleSelector, 'h2.private-title');
 });
 
+test('Gemini redaction bounds oversized page structure', () => {
+  const attrs = Array.from({ length: 24 }, (_, index) => `data-long-attribute-${index}="private-${index}"`).join(' ');
+  const page = `<main>${Array.from({ length: 360 }, (_, index) => `<article ${attrs}><h2>Private memory ${index}</h2></article>`).join('')}</main>`;
+  const redacted = redactHtmlForGemini(page);
+  assert.ok(redacted.markup.length <= 24_000, `redacted structure had ${redacted.markup.length} chars`);
+  assert.equal(redacted.markup.includes('private-0'), false);
+  assert.equal(redacted.markup.includes('Private memory'), false);
+  assert.match(redacted.markup, /<article/);
+});
+
 test('Gemini analysis sends only redacted structure and validates mapped selectors on the original page', async t => {
   const pageUrl = 'https://private.example/holidays/?private=alice';
   const html = `<html><head><title>Alice private family memories</title></head><body><main class="private-grid"><article class="private-card"><a class="private-link" href="https://private.example/watch/a?token=one"><h2 class="private-title">Alice birthday</h2></a><video><source src="https://media.private.example/a-family.mp4"></video></article><article class="private-card"><a class="private-link" href="https://private.example/watch/b?token=two"><h2 class="private-title">Family holiday</h2></a><video><source src="https://media.private.example/b-family.mp4"></video></article></main></body></html>`;
@@ -302,6 +312,8 @@ test('Gemini analysis sends only redacted structure and validates mapped selecto
   assert.ok(geminiCall);
   assert.equal(new Headers(geminiCall.init.headers).get('x-goog-api-key'), key);
   const prompt = JSON.parse(geminiCall.init.body).contents[0].parts[0].text;
+  const payload = JSON.parse(geminiCall.init.body);
+  assert.equal(payload.generationConfig.thinkingConfig.thinkingLevel, 'low');
   for (const secret of [pageUrl, 'private.example', 'media.private.example', 'token=one', 'Alice birthday', 'private-grid', 'private-card']) {
     assert.equal(prompt.includes(secret), false, `Gemini prompt leaked ${secret}`);
   }

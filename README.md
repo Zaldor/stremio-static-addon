@@ -28,7 +28,7 @@ The page and media must be publicly reachable over HTTPS. A selector must identi
 
 Open **Optional Gemini Flash selector helper**, enter your own Gemini API key, and choose **Gemini assist** on a source. The key is held in the current tab, sent to the JuzeReel Worker for that request, and forwarded to Google's Gemini API; JuzeReel does not save it or add it to the configuration, JSON export, or Stremio install URL. Clear the field or close the tab to remove it from the page.
 
-Before the request, JuzeReel removes page text, scripts, styles, and comments; replaces class and ID values with aliases; and replaces URL values with opaque placeholders. Gemini receives the remaining HTML structure and attribute names, not the page URL or original hosts, paths, text, classes, IDs, or media URLs. The Worker maps the suggested aliases back and checks the selectors against the original page. The real values are read locally for the preview. Gemini assistance is optional; the regular **Analyze & learn** path works without a key.
+Before the request, JuzeReel removes page text, scripts, styles, and comments; replaces class and ID values with aliases; and replaces URL values with opaque placeholders. The model receives a structural sketch capped at 24,000 characters and 350 elements, with low reasoning enabled to keep selector suggestions responsive. Gemini receives the remaining HTML structure and attribute names, not the page URL or original hosts, paths, text, classes, IDs, or media URLs. The Worker maps the suggested aliases back and checks the selectors against the original page. The real values are read locally for the preview. Gemini assistance is optional; the regular **Analyze & learn** path works without a key.
 
 ## Test and configure in Stremio
 

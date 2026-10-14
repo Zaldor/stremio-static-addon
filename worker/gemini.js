@@ -6,8 +6,9 @@ const URL_ATTRIBUTES = new Set([
   'data-file', 'data-poster', 'xlink:href'
 ]);
 const DROP_TAGS = 'script,style,noscript,iframe,object,embed,svg,canvas,template,form,button';
-const MAX_CONTEXT_CHARS = 56_000;
-const MAX_CONTEXT_NODES = 600;
+const MAX_CONTEXT_CHARS = 24_000;
+const MAX_CONTEXT_NODES = 350;
+const MAX_ATTRIBUTES_PER_NODE = 24;
 const MODEL = 'gemini-3.8-flash';
 const SAFE_CLASS = /^[A-Za-z_][A-Za-z0-9_-]{0,40}$/;
 const SAFE_ID = /^[A-Za-z_][A-Za-z0-9_-]{0,60}$/;
@@ -43,11 +44,12 @@ export function redactHtmlForGemini(html) {
     const attrs = node.attribs || {};
     const safeAttrs = {};
     for (const [rawName, rawValue] of Object.entries(attrs)) {
+      if (Object.keys(safeAttrs).length >= MAX_ATTRIBUTES_PER_NODE) break;
       const name = rawName.toLowerCase();
       if (!/^(?:[a-z][a-z0-9:_-]{0,48})$/.test(name) || name === 'style' || name.startsWith('on')) continue;
       if (name === 'class') {
-        const aliases = String(rawValue).split(/\s+/).filter(value => SAFE_CLASS.test(value))
-          .slice(0, 8).map(value => createAlias(classAliases, value, 'c'));
+        const aliases = String(rawValue).split(/\s+/).slice(0, 8).filter(value => SAFE_CLASS.test(value))
+          .map(value => createAlias(classAliases, value, 'c'));
         if (aliases.length) safeAttrs.class = aliases.join(' ');
         continue;
       }
@@ -74,9 +76,15 @@ export function redactHtmlForGemini(html) {
       }
     }
     node.attribs = safeAttrs;
-    if (node.children?.length) for (const child of [...node.children]) {
-      if (child.type === 'text') child.data = child.data.trim() ? '[TEXT]' : '';
-      else if (child.type === 'comment') $(child).remove();
+    if (node.children?.length) {
+      let hasText = false;
+      for (const child of [...node.children]) {
+        if (child.type === 'text') {
+          const nonEmpty = child.data.trim().length > 0;
+          child.data = nonEmpty && !hasText ? '[TEXT]' : '';
+          hasText ||= nonEmpty;
+        } else if (child.type === 'comment') $(child).remove();
+      }
     }
   });
   $.root().contents().each((_, node) => { if (node.type === 'comment') $(node).remove(); });
@@ -87,9 +95,10 @@ export function redactHtmlForGemini(html) {
   }
   let markup = $.root().html() || '';
   if (markup.length > MAX_CONTEXT_CHARS) {
-    const body = $('body');
-    while (markup.length > MAX_CONTEXT_CHARS && body.children().length > 1) {
-      body.children().last().remove();
+    const remaining = $.root().find('*').toArray().reverse();
+    for (const node of remaining) {
+      if (markup.length <= MAX_CONTEXT_CHARS) break;
+      $(node).remove();
       markup = $.root().html() || '';
     }
   }
@@ -165,10 +174,11 @@ export async function askGeminiForSelectors(apiKey, redactedMarkup) {
           temperature: 0.1,
           maxOutputTokens: 1600,
           responseMimeType: 'application/json',
-          responseSchema: jsonSchema()
+          responseSchema: jsonSchema(),
+          thinkingConfig: { thinkingLevel: 'low' }
         }
       }),
-      signal: AbortSignal.timeout(25_000)
+      signal: AbortSignal.timeout(55_000)
     });
   } catch (error) {
     if (error?.name === 'TimeoutError' || error?.name === 'AbortError') throw new Error('Gemini took too long to respond. Try again.');
